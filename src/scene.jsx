@@ -3,9 +3,8 @@ import { useGLTF, Environment, useTexture, Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import StarsField from "./components/StarsField";
-import { createRoot } from "react-dom/client";
 import PetScreen from "./tamagotchi/components/PetScreen";
-import { usePetStore } from "./tamagotchi/store/usePetStore";
+import { usePetStore } from "./tamagotchi/store/usePetstore";
 
 function getMeshBounds(root) {
   const meshBox = new THREE.Box3();
@@ -43,6 +42,7 @@ export default function Scene({ starsColor, starsSeed }) {
   const sticker1Ref = useRef(null);
   const sticker2Ref = useRef(null);
   const screenMeshRef = useRef(null);
+  const screenAnchorRef = useRef(null);
 
   // upload hooks
   useEffect(() => {
@@ -120,8 +120,12 @@ export default function Scene({ starsColor, starsSeed }) {
 
       // 🔥 SCREEN DETECTION (robust)
       if (name.includes("screen") || name.includes("display") || name.includes("monitor")) {
+        console.log("✅ SCREEN FOUND:", child.name);
         screenMeshRef.current = child;
+
+        // 🚨 HIDE original mesh (so Html is visible)
         child.visible = false;
+
         return;
       }
 
@@ -209,42 +213,29 @@ export default function Scene({ starsColor, starsSeed }) {
   const breath = 1 + Math.sin(t * 2) * 0.015;
   group.current.scale.setScalar(base * breath);
 
-  // 🎯 ORBIT (radial falloff near center)
-  const mxRaw = state.mouse.x;
-  const myRaw = state.mouse.y;
+  // 🎯 FIX ORBIT (smooth + correct direction)
+  const targetY = state.mouse.x * 0.25;
+  const targetX = -state.mouse.y * 0.15;
 
-  // distance from center (0 → center, ~1 → edges)
-  const r = Math.sqrt(mxRaw * mxRaw + myRaw * myRaw);
-
-  // 🎯 strong dead zone at center + falloff
-  const deadRadius = 0.3; // increase if still moving at center
-  let targetY = 0;
-  let targetX = 0;
-
-  if (r >= deadRadius) {
-    const k = THREE.MathUtils.smoothstep(r, deadRadius, 0.6);
-    const mx = mxRaw * k;
-    const my = myRaw * k;
-
-    targetY = mx * 0.25;
-    targetX = -my * 0.15;
-  }
-
-  // smooth damping (more stable than lerp)
-  group.current.rotation.y = THREE.MathUtils.damp(
+  // smooth damping (frame-rate independent)
+  const damping = 5;
+  group.current.rotation.y = THREE.MathUtils.lerp(
     group.current.rotation.y,
     targetY,
-    5,
-    delta
+    1 - Math.exp(-damping * delta)
   );
 
-  group.current.rotation.x = THREE.MathUtils.damp(
+  group.current.rotation.x = THREE.MathUtils.lerp(
     group.current.rotation.x,
     targetX,
-    5,
-    delta
+    1 - Math.exp(-damping * delta)
   );
 });
+
+  // 🎛️ MANUAL SCREEN CONTROLS (EDIT THESE)
+  const screenPosition = [0, 0.565, 0.1]; // x, y, z
+  const screenRotation = [0, 0, 0];      // radians
+  const screenScale = 2.1;               // size
 
   return (
     <>
@@ -254,20 +245,29 @@ export default function Scene({ starsColor, starsSeed }) {
       <StarsField color={starsColor} seed={starsSeed} />
 
       <group ref={group}>
-        <primitive object={scene} renderOrder={0} />
-        <group position={[0, 0.564, -0.5]}>
+        <primitive object={scene} />
+
+        <group
+          position={screenPosition}
+          rotation={screenRotation}
+          scale={[screenScale, screenScale, screenScale]}
+        >
           <Html
             transform
-            occlude
-            distanceFactor={1}
+            occlude={true}
+            distanceFactor={0.4}
+            zIndexRange={[1000, 0]}
             style={{
               width: "200px",
               height: "200px",
               pointerEvents: "auto",
-              background: "transparent"
+              background: "red",
+              overflow: "hidden",
+              borderRadius: "28px",
+              clipPath: "inset(0 round 28px)"
             }}
           >
-            <PetScreen />
+            <div style={{ color: "white", fontSize: "20px" }}>TEST</div>
           </Html>
         </group>
       </group>
