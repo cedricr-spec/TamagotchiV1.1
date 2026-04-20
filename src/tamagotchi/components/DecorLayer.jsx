@@ -15,15 +15,16 @@ export default function DecorLayer() {
 
   const TREE_ASSETS = [tree1, tree2, tree3, tree4, tree5, tree6, tree7, tree8];
 
-  const cellSize = 300;
+  const playerX = -worldOffset.x;
+  const playerY = -worldOffset.y;
 
-  const playerX = -(worldOffset?.x || 0);
-  const playerY = -(worldOffset?.y || 0);
-
+  // ⚠️ CRITICAL: must stay perfectly in sync with CollisionSystem
+  // same player position + same DECOR_CONFIG
   const trees = getTreesAround(playerX, playerY, DECOR_CONFIG);
 
   return (
     <div
+      data-decor-layer
       style={{
         position: "absolute",
         left: "50%",

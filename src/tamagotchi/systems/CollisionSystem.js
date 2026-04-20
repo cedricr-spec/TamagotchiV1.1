@@ -20,6 +20,8 @@ export default function CollisionSystem() {
         y: -worldOffset.y,
       };
 
+      // ⚠️ CRITICAL: must stay perfectly in sync with DecorLayer
+      // same coordinate system (world centered) + same DECOR_CONFIG
       const trees = getTreesAround(pet.x, pet.y, DECOR_CONFIG);
 
       if (DEBUG_HITBOX) {
@@ -32,13 +34,11 @@ export default function CollisionSystem() {
       for (const tree of trees) {
         // 🌳 full sprite collision (except top canopy)
         const padding = 1;
-        const offsetX = 0;
-        const offsetY = 0;
 
         const halfWidth = tree.width / 2 + padding;
 
         // 🔥 FIX: tree position behaves like CENTER in practice
-        const baseX = tree.x + offsetX;
+        const baseX = tree.x;
 
         // Deleted unused variables:
         // const baseY = tree.y - tree.height / 2 + offsetY;
@@ -68,11 +68,15 @@ export default function CollisionSystem() {
           el.style.position = "absolute";
           el.style.border = "1px solid red";
 
-          const centerX = window.innerWidth / 2;
-          const centerY = window.innerHeight / 2;
+          // ⚠️ use DecorLayer container center (NOT window) to avoid offset drift
+          const container = document.querySelector("[data-decor-layer]");
+          const rect = container?.getBoundingClientRect();
 
-          const screenLeft = centerX + (baseX + worldOffset.x) - halfWidth;
-          const screenTop = centerY + (collisionTop + worldOffset.y);
+          const centerX = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+          const centerY = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+
+          const screenLeft = centerX + baseX + worldOffset.x - halfWidth;
+          const screenTop = centerY + collisionTop + worldOffset.y;
 
           el.style.left = `${screenLeft}px`;
           el.style.top = `${screenTop}px`;

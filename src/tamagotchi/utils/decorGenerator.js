@@ -1,4 +1,6 @@
 // 🔥 SINGLE SOURCE OF TRUTH FOR DECOR (trees)
+// ⚠️ EVERYTHING here must be 100% deterministic (NO Math.random)
+// used by BOTH DecorLayer and CollisionSystem
 
 export const DECOR_CONFIG = {
   cellSize: 300,
@@ -14,11 +16,9 @@ function randFromSeed(gx, gy, salt = 0) {
 export function getTreesAround(playerX, playerY, options = {}) {
   const cellSize = options.cellSize || DECOR_CONFIG.cellSize;
 
-  // 🔥 clamp range to viewport so all systems stay in sync
-  const viewportMax = Math.max(window.innerWidth || 0, window.innerHeight || 0);
-  const dynamicRange = Math.ceil(viewportMax / cellSize) + 2;
-
-  const range = Math.min(options.range || DECOR_CONFIG.range, dynamicRange);
+  // ⚠️ CRITICAL: range MUST be deterministic and identical across all systems
+  // DO NOT use viewport or dynamic values here (breaks sync → orphan hitboxes)
+  const range = options.range || DECOR_CONFIG.range;
 
   const trees = [];
 
@@ -52,6 +52,8 @@ export function getTreesAround(playerX, playerY, options = {}) {
       // 👉 FOOT = same as bottom for now
       const footY = y;
 
+      const spriteIndex = Math.floor(randFromSeed(gx, gy, 3) * 8); // 8 tree sprites
+
       trees.push({
         id: `${gx}_${gy}`,
         x: worldX,
@@ -59,6 +61,7 @@ export function getTreesAround(playerX, playerY, options = {}) {
         width,
         height,
         footY,
+        spriteIndex, // ⚠️ MUST be used by DecorLayer
         type: "tree",
       });
     }
