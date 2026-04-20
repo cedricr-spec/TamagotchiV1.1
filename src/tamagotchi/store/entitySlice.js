@@ -5,7 +5,7 @@ export const createEntitySlice = (set) => ({
 
   spawnEntity: (x, y, type = "food") =>
     set((state) => {
-      const jitter = () => (Math.random() - 0.5) * 60;
+      const jitter = type === "decor" ? () => 0 : () => (Math.random() - 0.5) * 60;
 
       return {
         entities: [
@@ -20,6 +20,22 @@ export const createEntitySlice = (set) => ({
         ],
       };
     }),
+  spawnDecorEntity: (x, y, sprite, scale = 1) =>
+    set((state) => ({
+      entities: [
+        ...state.entities,
+        {
+          id: `decor-${Date.now()}-${Math.random()}`,
+          x,
+          y,
+          type: "decor",
+          sprite,
+          scale,
+          active: true,
+          persistent: true,
+        },
+      ],
+    })),
   addEntity: (entity) =>
     set((state) => ({
       entities: [...state.entities, entity],
@@ -28,6 +44,11 @@ export const createEntitySlice = (set) => ({
   removeEntity: (entityId) =>
     set((state) => ({
       entities: state.entities.filter((entity) => entity.id !== entityId),
+    })),
+
+  clearNonPersistent: () =>
+    set((state) => ({
+      entities: state.entities.filter((e) => e.persistent),
     })),
 
   updateEntity: (entityId, updates) =>

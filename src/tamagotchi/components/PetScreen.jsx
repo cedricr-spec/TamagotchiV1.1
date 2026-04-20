@@ -1,11 +1,13 @@
 import React from "react";
 import TamagotchiUI from "../ui/TamagotchiUI";
-import WorldLayer from "../components/WorldLayer";
+import PrairieBackground from "../backgrounds/PrairieBackground";
 import EntityLayer from "../components/EntityLayer";
 import SpawnSystem from "../systems/SpawnSystem";
 import VisibilitySystem from "../systems/VisibilitySystem";
 import CleanupSystem from "../systems/CleanupSystem";
 import InteractionSystem from "../systems/InteractionSystem";
+import CollisionSystem from "../systems/CollisionSystem";
+import DecorLayer from "../components/DecorLayer";
 
 export default function PetScreen() {
   return (
@@ -18,7 +20,10 @@ export default function PetScreen() {
       }}
     >
       {/* 🌍 WORLD BACKGROUND */}
-      <WorldLayer />
+      <PrairieBackground />
+
+      {/* 🌿 DECOR */}
+      <DecorLayer />
 
       {/* 🌟 ENTITIES */}
       <EntityLayer />
@@ -28,6 +33,7 @@ export default function PetScreen() {
       <VisibilitySystem />
       <CleanupSystem />
       <InteractionSystem />
+      <CollisionSystem />
 
       {/* 🐣 UI LAYER */}
       <div

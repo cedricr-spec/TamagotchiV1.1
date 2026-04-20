@@ -6,6 +6,15 @@ import { VISIBLE_MARGIN } from "../config/worldConfig";
 import { ENTITY_TYPES } from "../config/entityTypes";
 import { randomRange } from "../utils/random";
 
+import tree1 from "../../spritesheets/trees/tree1.webp";
+import tree2 from "../../spritesheets/trees/tree2.webp";
+import tree3 from "../../spritesheets/trees/tree3.webp";
+import tree4 from "../../spritesheets/trees/tree4.webp";
+import tree5 from "../../spritesheets/trees/tree5.webp";
+import tree6 from "../../spritesheets/trees/tree6.webp";
+import tree7 from "../../spritesheets/trees/tree7.webp";
+import tree8 from "../../spritesheets/trees/tree8.webp";
+
 let sessionSeed = Math.random() * 100000;
 
 function createEntityId() {
@@ -34,12 +43,40 @@ function getSpawnPoint(center, viewport) {
 
 export default function SpawnSystem() {
   const spawnEntity = useEntityStore((s) => s.spawnEntity);
+  const spawnDecorEntity = useEntityStore((s) => s.spawnDecorEntity);
+
+  useEffect(() => {
+    const existing = useEntityStore.getState().entities;
+    if (existing.some((e) => e.type === "decor")) return;
+
+    const { worldOffset } = useWorldStore.getState();
+
+    const TREE_ASSETS = [tree1, tree2, tree3, tree4, tree5, tree6, tree7, tree8];
+
+    const centerX = -(worldOffset.x || 0);
+    const centerY = -(worldOffset.y || 0);
+
+    const COUNT = 80;
+
+    for (let i = 0; i < COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 200 + Math.random() * 2000;
+
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+
+      const sprite = TREE_ASSETS[Math.floor(Math.random() * TREE_ASSETS.length)];
+      const scale = 0.8 + Math.random() * 0.6;
+
+      spawnDecorEntity(x, y, sprite, scale);
+    }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const { worldOffset } = useWorldStore.getState();
 
-      const batch = 1; // 🔥 number of entities per tick
+      const batch = 1 + Math.floor(Math.random() * 3); // 1 to 3 entities
       const minRadius = 200;
       const maxRadius = 1200;
 
@@ -47,12 +84,19 @@ export default function SpawnSystem() {
         const angle = Math.random() * Math.PI * 2;
         const radius = minRadius + Math.random() * (maxRadius - minRadius);
 
-        const x = -(worldOffset.x || 0) + Math.cos(angle) * radius;
-        const y = -(worldOffset.y || 0) + Math.sin(angle) * radius;
+        const centerX = -(worldOffset.x || 0);
+        const centerY = -(worldOffset.y || 0);
+
+        // add slight randomness offset to avoid circular patterns
+        const jitterX = (Math.random() - 0.5) * 100;
+        const jitterY = (Math.random() - 0.5) * 100;
+
+        const x = centerX + Math.cos(angle) * radius + jitterX;
+        const y = centerY + Math.sin(angle) * radius + jitterY;
 
         spawnEntity(x, y);
       }
-    }, 100); // 🔥 faster spawn rate
+    }, 10000); // 🔥 faster spawn rate
 
     return () => clearInterval(interval);
   }, []);

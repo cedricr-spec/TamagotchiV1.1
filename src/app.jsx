@@ -5,6 +5,7 @@ import Scene from "./scene.jsx";
 import CustomizerPanel from "./components/CustomizerPanel"
 import ArrowToggle from "./components/ArrowToggle"
 import { usePetStore } from "./tamagotchi/store/usePetstore";
+import { useWorldStore } from "./tamagotchi/store/worldSlice";
 import JaugesPanel from "./tamagotchi/components/JaugesPanel";
 import GaugeV2 from "./tamagotchi/components/GaugeV2";
 import LineMenu from "./tamagotchi/components/Line_Menu";
@@ -62,6 +63,60 @@ export default function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggleDebugUI]);
+
+  // 🎮 GLOBAL KEYBOARD CONTROLS (desktop)
+  useEffect(() => {
+    const isDesktop = window.innerWidth > 768;
+    if (!isDesktop) return;
+
+    const moveWorld = useWorldStore.getState().moveWorld;
+    const keys = {};
+
+    const handleDown = (e) => {
+      const key = e.key.toLowerCase();
+      if (["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(key)) {
+        e.preventDefault();
+        keys[key] = true;
+      }
+    };
+
+    const handleUp = (e) => {
+      const key = e.key.toLowerCase();
+      if (["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(key)) {
+        keys[key] = false;
+      }
+    };
+
+    window.addEventListener("keydown", handleDown);
+    window.addEventListener("keyup", handleUp);
+
+    let raf;
+    const speed = 4;
+
+    const loop = () => {
+      let dx = 0;
+      let dy = 0;
+
+      if (keys["arrowup"] || keys["w"]) dy += speed;
+      if (keys["arrowdown"] || keys["s"]) dy -= speed;
+      if (keys["arrowleft"] || keys["a"]) dx += speed;
+      if (keys["arrowright"] || keys["d"]) dx -= speed;
+
+      if (dx !== 0 || dy !== 0) {
+        moveWorld(dx, dy);
+      }
+
+      raf = requestAnimationFrame(loop);
+    };
+
+    loop();
+
+    return () => {
+      window.removeEventListener("keydown", handleDown);
+      window.removeEventListener("keyup", handleUp);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
   <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>

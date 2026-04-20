@@ -240,8 +240,8 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
           {/* BODY */}
           <div
   style={{
-    width: "110px",
-    height: "110px",
+    width: "50px",
+    height: "50px",
 
     // 👇 OUTLINE ICI
     filter: `
@@ -275,8 +275,8 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
           <div
   ref={eyesRef}
   style={{
-    width: "110px",
-    height: "110px",
+    width: "50px",
+    height: "50px",
     position: "absolute",
     top: 0,
     left: 0,
@@ -298,8 +298,8 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
           <div
   ref={mouthRef}
   style={{
-    width: "110px",
-    height: "110px",
+    width: "50px",
+    height: "50px",
     position: "absolute",
     top: 0,
     left: 0,

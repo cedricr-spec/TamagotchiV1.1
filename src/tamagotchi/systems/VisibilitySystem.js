@@ -2,42 +2,57 @@ import { VISIBLE_MARGIN } from "../config/worldConfig";
 import { isInBounds } from "../utils/spatial";
 
 import { useEffect } from "react";
-import { usePetStore } from "../store/usePetstore";
+import { useEntityStore } from "../store/entitySlice";
+import { useWorldStore } from "../store/worldSlice";
 
-export function updateVisibility(state, viewport = { width: 0, height: 0 }) {
-  const worldOffset = state.worldOffset || { x: 0, y: 0 };
+export function updateVisibility(state, viewport = { width: 0, height: 0 }, worldOffset = { x: 0, y: 0 }) {
   const halfWidth = viewport.width / 2;
   const halfHeight = viewport.height / 2;
 
+  const margin = VISIBLE_MARGIN * 2;
   const bounds = {
-    left: -worldOffset.x - halfWidth - VISIBLE_MARGIN,
-    right: -worldOffset.x + halfWidth + VISIBLE_MARGIN,
-    top: -worldOffset.y - halfHeight - VISIBLE_MARGIN,
-    bottom: -worldOffset.y + halfHeight + VISIBLE_MARGIN,
+    left: -halfWidth - margin,
+    right: halfWidth + margin,
+    top: -halfHeight - margin,
+    bottom: halfHeight + margin,
   };
 
   return (state.entities || []).map((entity) => ({
     ...entity,
-    active: isInBounds(entity, bounds),
+    active: isInBounds(
+      {
+        x: entity.x + (worldOffset.x || 0),
+        y: entity.y + (worldOffset.y || 0),
+      },
+      bounds
+    ),
   }));
 }
 
 export default function VisibilitySystem() {
-  const setState = usePetStore.setState;
+  const setState = useEntityStore.setState;
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    let raf;
+
+    const loop = () => {
       const viewport = {
         width: window.innerWidth,
         height: window.innerHeight,
       };
 
-      setState((state) => ({
-        entities: updateVisibility(state, viewport),
-      }));
-    }, 200);
+      const worldOffset = useWorldStore.getState().worldOffset;
 
-    return () => clearInterval(interval);
+      setState((state) => ({
+        entities: updateVisibility(state, viewport, worldOffset),
+      }));
+
+      raf = requestAnimationFrame(loop);
+    };
+
+    loop();
+
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   return null;

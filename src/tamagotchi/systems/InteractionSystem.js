@@ -8,18 +8,18 @@ import { useWorldStore } from "../store/worldSlice";
 export function handleInteractions(state) {
   const worldOffset = state.worldOffset || { x: 0, y: 0 };
 
+  // ✅ pet position in WORLD space (this was the working logic)
+  const pet = {
+    x: -worldOffset.x,
+    y: -worldOffset.y,
+  };
+
   return (state.entities || []).filter((entity) => {
-    // convert entity → screen space (match EntityLayer EXACTLY)
-    const ex = entity.x + (worldOffset?.x || 0);
-    const ey = entity.y + (worldOffset?.y || 0);
+    const radius =
+      ENTITY_TYPE_CONFIG[entity.type]?.interactionRadius || 50;
 
-    const radius = ENTITY_TYPE_CONFIG[entity.type]?.interactionRadius || 150;
-
-    // pet is always at (0,0) in world-relative screen space
-    return distance(
-      { x: ex, y: ey },
-      { x: 0, y: 0 }
-    ) <= radius;
+    // ✅ PURE world-space distance (no projection)
+    return distance(entity, pet) <= radius;
   });
 }
 
