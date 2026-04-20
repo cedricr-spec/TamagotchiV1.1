@@ -1,77 +1,58 @@
 import { useEffect } from "react";
-import { usePetStore } from "../store/usePetstore";
+import { useEntityStore } from "../store/entitySlice";
+import { useWorldStore } from "../store/worldSlice";
 import { MAX_ENTITIES, SPAWN_RADIUS } from "../config/spawnConfig";
 import { VISIBLE_MARGIN } from "../config/worldConfig";
 import { ENTITY_TYPES } from "../config/entityTypes";
 import { randomRange } from "../utils/random";
 
+let sessionSeed = Math.random() * 100000;
+
 function createEntityId() {
   return `entity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function getSpawnPoint(center) {
-  const angle = Math.random() * Math.PI * 2;
-  const radius = randomRange(SPAWN_RADIUS * 0.6, SPAWN_RADIUS);
+function getSpawnPoint(center, viewport) {
+  // mix session seed to avoid identical patterns across reloads
+  const angle = (Math.random() + sessionSeed) % 1 * Math.PI * 2;
+
+  const minRadius = Math.max(viewport.width, viewport.height) * 0.5 + 120;
+  const maxRadius = minRadius + SPAWN_RADIUS;
+
+  // better randomness (no radial bias)
+  const t = Math.random();
+  const r = Math.sqrt(
+    t * (maxRadius * maxRadius - minRadius * minRadius) +
+    minRadius * minRadius
+  );
 
   return {
-    x: center.x + Math.cos(angle) * radius,
-    y: center.y + Math.sin(angle) * radius,
+    x: center.x + Math.cos(angle) * r,
+    y: center.y + Math.sin(angle) * r,
   };
 }
 
-export function spawnEntities(state, viewport = { width: 0, height: 0 }) {
-  const entities = state.entities || [];
-
-  if (entities.length >= MAX_ENTITIES) {
-    return entities;
-  }
-
-  const center = {
-  x: -(state.worldOffset?.x || 0) + (Math.random() - 0.5) * 300,
-  y: -(state.worldOffset?.y || 0) + (Math.random() - 0.5) * 300,
-};
-  const position = getSpawnPoint(center);
-  const types = Object.values(ENTITY_TYPES);
-  const type = types[Math.floor(randomRange(0, types.length))];
-
-  return [
-    ...entities,
-    {
-      id: createEntityId(),
-      type,
-      x: position.x,
-      y: position.y,
-      active: false,
-      createdAt: Date.now(),
-    },
-  ];
-}
-
-
 export default function SpawnSystem() {
-  const setState = usePetStore.setState;
+  const spawnEntity = useEntityStore((s) => s.spawnEntity);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const viewport = {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      };
+      const { worldOffset } = useWorldStore.getState();
 
-      setState((state) => {
-        const next = spawnEntities(state, viewport);
+      const batch = 1; // 🔥 number of entities per tick
+      const minRadius = 200;
+      const maxRadius = 1200;
 
-        // if spawnEntities returned same array, keep state
-        if (next === state.entities) return state;
+      for (let i = 0; i < batch; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = minRadius + Math.random() * (maxRadius - minRadius);
 
-        // append only NEW entity (last one)
-        const newEntity = next[next.length - 1];
+        const x = -(worldOffset.x || 0) + Math.cos(angle) * radius;
+        const y = -(worldOffset.y || 0) + Math.sin(angle) * radius;
 
-        return {
-          entities: [...state.entities, newEntity],
-        };
-      });
-    }, 1500);
+        spawnEntity(x, y);
+      }
+    }, 100); // 🔥 faster spawn rate
 
     return () => clearInterval(interval);
   }, []);

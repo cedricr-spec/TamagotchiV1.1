@@ -1,11 +1,7 @@
 import { create } from "zustand";
 
 export const createEntitySlice = (set) => ({
-  entities: [
-    { id: 1, x: 100, y: 0, type: "food", active: true },
-    { id: 2, x: -150, y: 50, type: "food", active: true },
-    { id: 3, x: 200, y: -100, type: "food", active: true },
-  ],
+  entities: [],
 
   spawnEntity: (x, y, type = "food") =>
     set((state) => {
