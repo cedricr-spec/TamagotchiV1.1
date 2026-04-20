@@ -1,7 +1,9 @@
 import React, { useState } from "react"
+import { usePetStore } from "/Users/cedricrandriakoto/Desktop/PRO/PORTFOLIO 2K26/animation-macbook-site/src/tamagotchi/store/usePetstore.js";
 
 export default function PanelItem({ label, selected = false, onClick }) {
   const [pressed, setPressed] = useState(false)
+  const debugUI = usePetStore((s) => s.debugUI)
   const bg = selected
     ? "/CTA_item_panel_selected.svg"
     : "/CTA_item_panel_unselected.svg"
@@ -21,7 +23,8 @@ export default function PanelItem({ label, selected = false, onClick }) {
     justifyContent: "center",
     cursor: "pointer",
     transform: pressed ? "scale(0.97)" : "scale(1)",
-    transition: "transform 0.1s ease"
+    transition: "transform 0.1s ease",
+    outline: debugUI ? "2px solid red" : "none",
   }}
 >
       {/* BACKGROUND SVG */}
@@ -54,6 +57,19 @@ export default function PanelItem({ label, selected = false, onClick }) {
 >
   {label}
 </div>
-    </div>
+    {debugUI && (
+  <div
+    style={{
+      position: "absolute",
+      inset: 0,
+      pointerEvents: "none",
+      zIndex: 10
+    }}
+  >
+    <div style={{ position: "absolute", inset: 0, background: "rgba(255,0,0,0.2)" }} />
+    <div style={{ position: "absolute", left: "10%", right: "10%", top: "20%", bottom: "20%", background: "rgba(0,255,0,0.2)" }} />
+  </div>
+)}
+</div>
   )
 }

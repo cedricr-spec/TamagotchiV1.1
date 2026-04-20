@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 :root {
   --bg-base: #050505;
   --grad-1: rgba(187, 239, 252, 1);
@@ -29,7 +30,7 @@ body {
   width: 170vw;
   height: 80vh;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
 
   background: radial-gradient(
     ellipse at 50% 100%,
@@ -50,7 +51,7 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
   opacity: 0.05;
   background-image: url('/noise.png');
   background-repeat: repeat;
@@ -60,7 +61,7 @@ body {
 /* Canvas */
 canvas {
   position: relative;
-  z-index: 3;
+  z-index: 2; /* keep but ensure it's above background */
   width: 100vw;
   height: 100vh;
   display: block;
@@ -244,7 +245,24 @@ canvas {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
 }
+.text-label {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+  letter-spacing: 0.4px;
+}
 
+.text-value {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #dfe6ff;
+}
+
+.text-title {
+  font-size: 16px;
+  font-weight: 600;
+}
 .preset-popin-content div {
   padding: 12px 12px;
   border-radius: 6px;
@@ -259,4 +277,101 @@ canvas {
 
 .preset-section {
   position: relative;
+}
+
+.gauge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.gauge-label-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-ring-wrapper {
+  position: relative;
+  overflow: visible;
+}
+
+.gauge-value {
+  /* color is controlled dynamically in Gauge.jsx (red → orange → green) */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: #dfe6ff;
+  letter-spacing: -0.8px;
+  z-index: 3;
+}
+
+.game-action-button {
+  font-family: sans-serif;
+}
+
+.game-action-label {
+  font-size: 14px;
+  color: white;
+  letter-spacing: -0.3px;
+}
+
+.game-action-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* 🔒 Force UI above everything */
+.game-action-button,
+.game-action-label,
+.game-action-icon {
+  position: relative;
+  z-index: 1;
+}
+
+.cooldown-text {
+  font-size: 20px;
+  letter-spacing: -0.3px;
+  color: white;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+
+.action-title {
+  font-size: 1.2vw;
+  letter-spacing: -0.05em;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.4;
+}
+
+.effect.positive {
+  color: #00ffcc;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6vw;
+  line-height: 1.4;
+}
+
+.effect.negative {
+  color: #ff3b3b;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6vw;
+  line-height: 1.4;
+}
+
+.cta.bit {
+  color: #ffffff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+:root {
+  --hud-grad-1: #00ffc8;
+  --hud-grad-2: #00a6ff;
+  --hud-grad-3: #7b5cff;
 }

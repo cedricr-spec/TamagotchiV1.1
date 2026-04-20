@@ -2,16 +2,20 @@ import React, { useState, useEffect, useRef } from "react"
 import PanelItem from "./PanelItem"
 import IconButton from "./IconButton"
 import { HexColorPicker } from "react-colorful"
-import tinycolor from "tinycolor2"
 import { usePetStore } from "../tamagotchi/store/usePetStore"
 
-export default function CustomizerPanel({ open, setStarsColor, onRandomizeStars, onClose }) {
+export default function CustomizerPanel({ open, onRandomizeStars, onClose }) {
   const [active, setActive] = useState(null)
   const [selectedPreset, setSelectedPreset] = useState(null)
   const [isPresetOpen, setIsPresetOpen] = useState(false)
   const panelRef = useRef()
   const [color, setColor] = useState("#4fd1ff")
-  const { petColor, setPetColor, modelColor, setModelColor } = usePetStore()
+  const petColor = usePetStore((s) => s.theme.petColor)
+  const modelColor = usePetStore((s) => s.theme.modelColor)
+  const setPetColor = usePetStore((s) => s.setPetColor)
+  const setModelColor = usePetStore((s) => s.setModelColor)
+  const setTheme = usePetStore((s) => s.setTheme)
+  const debugUI = usePetStore((s) => s.debugUI)
   const [history, setHistory] = useState({ past: [], present: { color: "#4fd1ff", starsColor: "#ffffff", starsSeed: 0, petColor: petColor, modelColor: modelColor }, future: [] })
   const [savePressed, setSavePressed] = useState(false)
   const [starsTemp, setStarsTemp] = useState("#ffffff")
@@ -26,10 +30,15 @@ const [petSavePressed, setPetSavePressed] = useState(false)
 const isPetDirty = petTemp !== petSaved
   const isModelDirty = modelColor !== history.present.modelColor
   const presets = [
-  { name: "LAVA", background: "#ff5a1f", starsColor: "#ffb347", petColor: "#ff7a3a" },
-  { name: "ICE", background: "#4fd1ff", starsColor: "#e0f7ff", petColor: "#bfe9ff" },
-  { name: "NEON", background: "#7b00ff", starsColor: "#00ffe0", petColor: "#c084ff" }
-]
+    { name: "LAVA", background: "#ff5a1f", starsColor: "#ffb347", petColor: "#ff9a66", modelColor: "#cc2e00" },
+    { name: "ICE", background: "#4fd1ff", starsColor: "#e0f7ff", petColor: "#e6fbff", modelColor: "#5cc8ff" },
+    { name: "NEON", background: "#7b00ff", starsColor: "#00ffe0", petColor: "#ffd60a", modelColor: "#6a00f4" },
+    { name: "NATURE", background: "rgb(75, 41, 25)", starsColor: "#32631f", petColor: "#b7ff9a", modelColor: "#2f7d32" },
+    { name: "SUNSET", background: "#ff7e5f", starsColor: "#ffd6a5", petColor: "#ffb199", modelColor: "#ff4d2d" },
+    { name: "SPACE", background: "#1a1a40", starsColor: "#ffe35a", petColor: "#9aa4ff", modelColor: "#2b2bd6" },
+    { name: "CYBER", background: "#00f5d4", starsColor: "rgb(255, 221, 0)", petColor: "#ff66ff", modelColor: "#00aaff" },
+    { name: "MONO", background: "#888888", starsColor: "#ffffff", petColor: "#e6e6e6", modelColor: "#555555" }
+  ]
 
   const isDirty = color !== history.present.color
   const isStarsDirty = starsTemp !== starsSaved
@@ -37,7 +46,11 @@ const isPetDirty = petTemp !== petSaved
     setHistory((prev) => {
       const newPresent = {
         ...prev.present,
-        ...newPartialState
+        ...newPartialState,
+        modelColor:
+          newPartialState.modelColor !== undefined
+            ? newPartialState.modelColor
+            : prev.present.modelColor
       }
 
       return {
@@ -72,18 +85,6 @@ const isPetDirty = petTemp !== petSaved
     })
   }
 
-  const applyGradient = (hex) => {
-    const base = tinycolor(hex)
-
-    const grad1 = base.lighten(25).toRgbString()
-    const grad2 = base.toRgbString()
-    const grad3 = base.darken(35).toRgbString()
-
-    const root = document.documentElement
-    root.style.setProperty("--grad-1", grad1)
-    root.style.setProperty("--grad-2", grad2)
-    root.style.setProperty("--grad-3", grad3)
-  }
 
   // CLICK OUTSIDE
   useEffect(() => {
@@ -104,12 +105,12 @@ const isPetDirty = petTemp !== petSaved
   useEffect(() => {
     const c = history.present.color || color
     setColor(c)
-    applyGradient(c)
+    setTheme((prev) => ({ ...prev, background: c }))
 
     if (history.present.starsColor) {
       setStarsTemp(history.present.starsColor)
       setStarsSaved(history.present.starsColor)
-      if (setStarsColor) setStarsColor(history.present.starsColor)
+      setTheme((prev) => ({ ...prev, starsColor: history.present.starsColor }))
 
       if (history.present.starsSeed !== undefined && onRandomizeStars) {
         onRandomizeStars(history.present.starsSeed)
@@ -131,7 +132,7 @@ const isPetDirty = petTemp !== petSaved
   style={{
         position: "fixed",
         top: 0,
-        right: 0,
+        left: 0,
         width: "320px",
         height: "100vh",
         backgroundImage: "url('/background_panel.webp')",
@@ -139,13 +140,12 @@ const isPetDirty = petTemp !== petSaved
         backgroundPosition: "center",
         boxSizing: "border-box",
         zIndex: 15,
-
-        transform: open ? "translateX(0)" : "translateX(100%)",
+        transform: open ? "translateX(0)" : "translateX(-100%)",
         transition: "transform 0.35s ease",
-
         display: "flex",
         flexDirection: "column",
-        gap: "20px"
+        gap: "20px",
+        outline: debugUI ? "2px solid red" : "none",
       }}
     >
       {/* HEADER */}
@@ -153,7 +153,8 @@ const isPetDirty = petTemp !== petSaved
   style={{
     display: "flex",
     flexDirection: "column",
-    gap: "12px"
+    gap: "12px",
+    padding: "16px 20px"
   }}
 >
         {/* Top row */}
@@ -251,7 +252,7 @@ const isPetDirty = petTemp !== petSaved
           width: "20px",
           marginRight: "20px",
           zIndex: 2,
-          transform: isPresetOpen ? "scaleY(-1)" : "scaleY(1)"
+          transform: `${isPresetOpen ? "scaleY(-1)" : "scaleY(1)"} scaleX(-1)`
         }}
       />
     </div>
@@ -267,20 +268,26 @@ const isPetDirty = petTemp !== petSaved
   setSelectedPreset(p.name)
   setIsPresetOpen(false)
 
-  applyGradient(p.background)
-
-  if (setStarsColor) setStarsColor(p.starsColor)
+  setTheme((prev) => ({
+    ...prev,
+    background: p.background,
+    starsColor: p.starsColor,
+    petColor: p.petColor,
+    modelColor: p.modelColor
+  }))
 
   // 🔥 AJOUT PET
   if (p.petColor) {
-  setPetColor(p.petColor)
-  setPetTemp(p.petColor)
-  setPetSaved(p.petColor)
+    setPetColor(p.petColor)
+    setModelColor(p.modelColor)
 
-  if (window.setPetColor) {
-    window.setPetColor(p.petColor)
+    setPetTemp(p.petColor)
+    setPetSaved(p.petColor)
+
+    if (window.setPetColor) {
+      window.setPetColor(p.petColor)
+    }
   }
-}
 
   const newSeed = Date.now()
   if (onRandomizeStars) onRandomizeStars(newSeed)
@@ -289,7 +296,8 @@ const isPetDirty = petTemp !== petSaved
     color: p.background,
     starsColor: p.starsColor,
     starsSeed: newSeed,
-    petColor: p.petColor
+    petColor: p.petColor,
+    modelColor: p.modelColor
   })
 }}
             >
@@ -352,7 +360,7 @@ const isPetDirty = petTemp !== petSaved
           color={color}
           onChange={(newColor) => {
             setColor(newColor)
-            applyGradient(newColor)
+            setTheme((prev) => ({ ...prev, background: newColor }))
           }}
         />
       </div>
@@ -428,7 +436,7 @@ const isPetDirty = petTemp !== petSaved
       color={starsTemp}
       onChange={(c) => {
         setStarsTemp(c)
-        if (setStarsColor) setStarsColor(c)
+        setTheme((prev) => ({ ...prev, starsColor: c }))
       }}
     />
 
@@ -439,7 +447,7 @@ const isPetDirty = petTemp !== petSaved
         setStarsSavePressed(true)
         setTimeout(() => setStarsSavePressed(false), 150)
         setStarsSaved(starsTemp)
-        if (setStarsColor) setStarsColor(starsTemp)
+        setTheme((prev) => ({ ...prev, starsColor: starsTemp }))
         pushToHistory({ starsColor: starsTemp })
       }}
       onMouseDown={() => setStarsSavePressed(true)}
@@ -841,7 +849,20 @@ pushToHistory({ starsSeed: newSeed })
     </div>
   )}
 </div>
+      {debugUI && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 999,
+            border: "2px solid red"
+          }}
+        >
+          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "80px", background: "rgba(0,255,0,0.2)" }} />
+          <div style={{ position: "absolute", top: "80px", left: 0, width: "100%", height: "200px", background: "rgba(0,0,255,0.2)" }} />
+        </div>
+      )}
     </div>
   )
-  
 }

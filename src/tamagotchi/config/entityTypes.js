@@ -1,0 +1,15 @@
+export const ENTITY_TYPES = {
+  FOOD: "food",
+  TOY: "toy",
+};
+
+export const ENTITY_TYPE_CONFIG = {
+  [ENTITY_TYPES.FOOD]: {
+    label: "Food",
+    interactionRadius: 80,
+  },
+  [ENTITY_TYPES.TOY]: {
+    label: "Toy",
+    interactionRadius: 100,
+  },
+};

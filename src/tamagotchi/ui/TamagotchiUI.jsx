@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
 import { usePetStore } from "../store/usePetStore"
-import PrairieBackground from "../backgrounds/PrairieBackground"
-import tinycolor from "tinycolor2"
 
 function hexToFilter(hex) {
   const color = tinycolor(hex)
@@ -27,20 +25,10 @@ const uiRef = useRef()
   const [eyesState, setEyesState] = useState("default")
   const { petColor } = usePetStore()
 
-const bodyColor = petColor
-const base = tinycolor(petColor)
-
-const isLight = base.isLight()
-const outlineColor = isLight
-  ? base.clone().darken(60).toHexString()
-  : base.clone().lighten(60).toHexString()
-const eyesColor = isLight
-  ? base.darken(35).toHexString()
-  : base.lighten(60).toHexString()
-
-const mouthColor = isLight
-  ? base.darken(50).toHexString()
-  : base.lighten(75).toHexString()
+const bodyColor = "var(--pet-color)"
+const outlineColor = "var(--pet-outline)"
+const eyesColor = "var(--pet-eyes)"
+const mouthColor = "var(--pet-mouth)"
 
   // 🧠 boucle de vie
   useEffect(() => {
@@ -211,15 +199,16 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
   id="tamagotchi-ui"
   style={{
     position: "relative",
-    width: "220px",
-    height: "220px",
+    width: "100%", // 🔥 fill parent
+    height: "100%",
     borderRadius: "16px",
-    overflow: "hidden"
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
   }}
 >
 
-    {/* 🌱 BACKGROUND */}
-    <PrairieBackground />
 
     {/* 🔥 CONTENU */}
     <div
@@ -230,27 +219,21 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
         color: "white",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
+        justifyContent: "center",
         height: "100%",
         fontSize: "12px"
       }}
     >
-      {/* stats */}
-      <div>
-        <div>🍗 Hunger: {Math.round(hunger)}</div>
-        <div>⚡ Energy: {Math.round(energy)}</div>
-        <div>😊 Happiness: {Math.round(happiness)}</div>
-      </div>
 
       {/* pet */}
       <div
         style={{
           position: "relative",
           width: "100%",
-          height: "120px",
+          height: "100%",
           display: "flex",
           justifyContent: "center",
-          alignItems: "flex-end"
+          alignItems: "center"
         }}
       >
         <div ref={bodyRef} style={{ position: "relative" }}>
@@ -336,12 +319,6 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
         </div>
       </div>
 
-      {/* actions */}
-      <div style={{ display: "flex", gap: "6px" }}>
-        <button onClick={feed}>🍔</button>
-        <button onClick={play}>🎮</button>
-        <button onClick={sleep}>💤</button>
-      </div>
           </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import StarsField from "./components/StarsField";
 import PetScreen from "./tamagotchi/components/PetScreen";
+import JaugesPanel from "./tamagotchi/components/JaugesPanel";
 import { usePetStore } from "./tamagotchi/store/usePetstore";
 
 function getMeshBounds(root) {
@@ -20,9 +21,9 @@ function getMeshBounds(root) {
   return hasMesh.current ? meshBox : new THREE.Box3().setFromObject(root);
 }
 
-export default function Scene({ starsColor, starsSeed }) {
+export default function Scene({ starsSeed, mode }) {
   const group = useRef();
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
 
   const { scene } = useGLTF("/tamagotchi_model.glb");
 
@@ -35,14 +36,50 @@ export default function Scene({ starsColor, starsSeed }) {
   const [sticker1, setSticker1] = useState(null);
   const [sticker2, setSticker2] = useState(null);
 
+
+
   // 🎨 COLORS (store)
-  const modelColor = usePetStore((state) => state.modelColor);
+  const modelColor = usePetStore((state) => state.theme.modelColor);
+  const starsColor = usePetStore((s) => s.theme.starsColor);
+  const debugUI = usePetStore((s) => s.debugUI);
+
+
+  // 🕹️ ACTION HOOKS
+  const feed = usePetStore((s) => s.feed);
+  const play = usePetStore((s) => s.play);
+  const sleep = usePetStore((s) => s.sleep);
 
   // 👉 refs
   const sticker1Ref = useRef(null);
   const sticker2Ref = useRef(null);
   const screenMeshRef = useRef(null);
   const screenAnchorRef = useRef(null);
+  const screenGroupRef = useRef(null);
+  const screenBasePosRef = useRef(new THREE.Vector3());
+
+  // 🎛️ MANUAL SCREEN CONTROLS (EDIT THESE)
+  const isFullscreen = mode === "fullscreen";
+
+  const [fsOpen, setFsOpen] = useState(false);
+
+  useEffect(() => {
+    if (isFullscreen) {
+      setFsOpen(false);
+      requestAnimationFrame(() => setFsOpen(true));
+    } else {
+      setFsOpen(false);
+    }
+  }, [isFullscreen]);
+
+  const screenPosition = isFullscreen
+    ? [0, 0.1, 0.2] // 🔥 better centered visually
+    : [0, 0.563, 0.05];
+
+  const screenRotation = [0, 0, 0];
+
+  const screenScale = isFullscreen
+    ? 5 // 🔥 bigger + more visible
+    : 2.15;
 
   // upload hooks
   useEffect(() => {
@@ -99,6 +136,15 @@ export default function Scene({ starsColor, starsSeed }) {
     };
   }, []);
 
+  // 🔧 Allow DOM clicks above canvas
+  useEffect(() => {
+    if (gl && gl.domElement) {
+      gl.domElement.style.pointerEvents = "none";
+      gl.domElement.style.zIndex = "0"; // ensure canvas stays behind UI
+      gl.domElement.style.position = "relative";
+    }
+  }, [gl]);
+
   colorMap.colorSpace = THREE.SRGBColorSpace;
   normalMap.colorSpace = THREE.NoColorSpace;
   roughnessMap.colorSpace = THREE.NoColorSpace;
@@ -112,15 +158,27 @@ export default function Scene({ starsColor, starsSeed }) {
 
     scene.traverse((child) => {
       if (!child.isMesh) return;
-      console.log("MESH:", child.name);
       const mat = child.material;
       if (!mat) return;
+
+      const applyColor = (m) => {
+        if (!m) return;
+
+        // ensure valid color
+        const safeColor = modelColor || "#ffffff";
+
+        m.color.set(safeColor);
+        m.transparent = false;
+        m.opacity = 1;
+        m.depthWrite = true;
+
+        m.needsUpdate = true;
+      };
 
       const name = child.name?.toLowerCase() || "";
 
       // 🔥 SCREEN DETECTION (robust)
       if (name.includes("screen") || name.includes("display") || name.includes("monitor")) {
-        console.log("✅ SCREEN FOUND:", child.name);
         screenMeshRef.current = child;
 
         // 🚨 HIDE original mesh (so Html is visible)
@@ -177,12 +235,21 @@ export default function Scene({ starsColor, starsSeed }) {
       mat.normalMap = normalMap;
       mat.roughnessMap = roughnessMap;
 
+      mat.transparent = false;
+      mat.opacity = 1;
+      mat.alphaTest = 0;
+
       // 🎨 APPLY COLOR MULTIPLIER
-      mat.color = new THREE.Color(modelColor);
+      if (Array.isArray(mat)) {
+        mat.forEach(applyColor);
+      } else {
+        applyColor(mat);
+      }
 
       mat.roughness = 1;
       mat.normalScale = new THREE.Vector2(0.25, 0.25);
 
+      mat.depthWrite = true;
       mat.needsUpdate = true;
     });
 
@@ -203,74 +270,276 @@ export default function Scene({ starsColor, starsSeed }) {
     camera.position.set(0, 0.1, 3);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
-  }, [scene, colorMap, normalMap, roughnessMap, sticker1, sticker2, modelColor]);
+
+    // store base screen position
+    screenBasePosRef.current.set(
+      screenPosition[0],
+      screenPosition[1],
+      screenPosition[2]
+    );
+  }, [scene, colorMap, normalMap, roughnessMap, sticker1, sticker2, modelColor, mode]);
 
   useFrame((state, delta) => {
-  if (!group.current) return;
+    if (!group.current) return;
 
-  const t = state.clock.elapsedTime;
-  const base = group.current.userData.baseScale || 1;
-  const breath = 1 + Math.sin(t * 2) * 0.015;
-  group.current.scale.setScalar(base * breath);
+    const t = state.clock.elapsedTime;
+    const base = group.current.userData.baseScale || 1;
+    const breath = 1 + Math.sin(t * 2) * 0.015;
+    group.current.scale.setScalar(base * breath);
 
-  // 🎯 FIX ORBIT (smooth + correct direction)
-  const targetY = state.mouse.x * 0.25;
-  const targetX = -state.mouse.y * 0.15;
+    // 🎯 FIX ORBIT (smooth + correct direction)
+    const damping = 5;
 
-  // smooth damping (frame-rate independent)
-  const damping = 5;
-  group.current.rotation.y = THREE.MathUtils.lerp(
-    group.current.rotation.y,
-    targetY,
-    1 - Math.exp(-damping * delta)
-  );
+    if (isFullscreen) {
+      // 🔥 reset + lock rotation
+      group.current.rotation.y = THREE.MathUtils.lerp(
+        group.current.rotation.y,
+        0,
+        1 - Math.exp(-damping * delta)
+      );
 
-  group.current.rotation.x = THREE.MathUtils.lerp(
-    group.current.rotation.x,
-    targetX,
-    1 - Math.exp(-damping * delta)
-  );
-});
+      group.current.rotation.x = THREE.MathUtils.lerp(
+        group.current.rotation.x,
+        0,
+        1 - Math.exp(-damping * delta)
+      );
+    } else {
+      const targetY = state.mouse.x * 0.25;
+      const targetX = -state.mouse.y * 0.15;
 
-  // 🎛️ MANUAL SCREEN CONTROLS (EDIT THESE)
-  const screenPosition = [0, 0.565, 0.1]; // x, y, z
-  const screenRotation = [0, 0, 0];      // radians
-  const screenScale = 2.1;               // size
+      group.current.rotation.y = THREE.MathUtils.lerp(
+        group.current.rotation.y,
+        targetY,
+        1 - Math.exp(-damping * delta)
+      );
+
+      group.current.rotation.x = THREE.MathUtils.lerp(
+        group.current.rotation.x,
+        targetX,
+        1 - Math.exp(-damping * delta)
+      );
+    }
+
+    if (screenGroupRef.current) {
+      if (isFullscreen) {
+        // 🔥 force fixed position in fullscreen (no drift)
+        screenGroupRef.current.position.x = screenPosition[0];
+        screenGroupRef.current.position.y = screenPosition[1];
+      } else {
+        const posStrength = 0.037;
+        const deadzone = 0.05;
+
+        const mx = Math.abs(state.mouse.x) < deadzone ? 0 : state.mouse.x;
+        const my = Math.abs(state.mouse.y) < deadzone ? 0 : state.mouse.y;
+
+        const targetX = screenBasePosRef.current.x + mx * posStrength;
+        const targetY = screenBasePosRef.current.y + my * posStrength * 0.62; // less vertical movement
+
+        const damping = 5;
+
+        screenGroupRef.current.position.x = THREE.MathUtils.lerp(
+          screenGroupRef.current.position.x,
+          targetX,
+          1 - Math.exp(-damping * delta)
+        );
+
+        screenGroupRef.current.position.y = THREE.MathUtils.lerp(
+          screenGroupRef.current.position.y,
+          targetY,
+          1 - Math.exp(-damping * delta)
+        );
+      }
+    }
+  });
 
   return (
     <>
-      <ambientLight intensity={1.2} />
-      <directionalLight position={[3, 5, 4]} intensity={1.5} />
-      <Environment files="/hdri.exr" background={false} blur={0.2} />
-      <StarsField color={starsColor} seed={starsSeed} />
+      {!debugUI && (
+        <>
+          <ambientLight intensity={1.2} />
+          <directionalLight position={[3, 5, 4]} intensity={1.5} />
+          <Environment files="/hdri.exr" background={false} blur={0.2} />
+          <StarsField color={starsColor} seed={starsSeed} />
+        </>
+      )}
 
       <group ref={group}>
-        <primitive object={scene} />
+        <primitive object={scene} visible={!debugUI && mode !== "fullscreen"} />
 
-        <group
-          position={screenPosition}
-          rotation={screenRotation}
-          scale={[screenScale, screenScale, screenScale]}
-        >
-          <Html
-            transform
-            occlude={true}
-            distanceFactor={0.4}
-            zIndexRange={[1000, 0]}
-            style={{
-              width: "200px",
-              height: "200px",
-              pointerEvents: "auto",
-              background: "red",
-              overflow: "hidden",
-              borderRadius: "28px",
-              clipPath: "inset(0 round 28px)"
-            }}
+        {!debugUI && !isFullscreen && (
+          <group
+            ref={screenGroupRef}
+            position={screenPosition}
+            rotation={screenRotation}
+            scale={[screenScale, screenScale, screenScale]}
           >
-            <div style={{ color: "white", fontSize: "20px" }}>TEST</div>
-          </Html>
-        </group>
+            <Html
+              transform
+              center
+              occlude={false}
+              distanceFactor={0.4}
+              zIndexRange={[1000, 0]}
+              style={{
+                width: "200px",
+                height: "200px",
+                pointerEvents: "auto",
+                overflow: "hidden",
+                borderRadius: "28px",
+                clipPath: "inset(0 round 28px)",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <PetScreen />
+            </Html>
+          </group>
+        )}
+
+        {/* --- END UI BUTTONS GROUP --- */}
+
       </group>
+      {/* Fullscreen Html is now outside the 3D group and attached to document.body */}
+      {!debugUI && isFullscreen && (
+        <Html
+          portal={document.body}
+          prepend
+          style={{
+            position: "fixed",
+            top: "45%", // 👈 move slightly higher (tweak here)
+            left: "50%",
+            transform: "translate(-50%, -55%)",
+            pointerEvents: "auto",
+            zIndex: 999999
+          }}
+        >
+          <div style={{
+            width: "clamp(320px, 80vw, 900px)", // 🔥 better responsive width
+            padding: "clamp(6px, 0.2vw, 12px)", // 🔥 breathing space on small screens
+            height: "clamp(400px, 65vh, 800px)", // 🔥 keep vertical control
+            borderRadius: "24px",
+            background: "rgba(255, 255, 255, 0.08)", // 🔥 glass base
+            backdropFilter: "blur(20px)", // 🔥 glass blur
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.15)", // subtle edge
+            boxShadow: "0 20px 80px rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            overflow: "hidden",
+            transform: `scale(${fsOpen ? 1 : 0.85})`,
+            transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
+            willChange: "transform"
+          }}>
+            {/* 🔥 glass overlay ABOVE screen */}
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              background: "url('/src/hud/Overlay_Glass.webp') center / cover no-repeat",
+              opacity: 1,
+              pointerEvents: "none",
+              zIndex: 100
+            }} />
+
+            <div style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "16px",
+              overflow: "hidden",
+              background: "black", // 🔥 solid black screen base
+              position: "relative",
+              zIndex: 1
+            }}>
+            <div style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between"
+            }}>
+
+              {/* GAME SCREEN */}
+              <div style={{
+                flex: 1,
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <PetScreen />
+
+                {/* JAUGES OVERLAY FULL WIDTH */}
+                <div style={{
+                  position: "absolute",
+                  top: "8px",                // 👈 move to top
+                  left: 0,
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center", // horizontal center
+                  alignItems: "center",     // vertical alignment within its own height
+                  pointerEvents: "auto",
+                  padding: "0 8px",
+                  transform: "translateX(-8px)" // 👈 slight visual centering tweak
+                }}>
+                  <JaugesPanel embedded />
+                </div>
+              </div>
+
+
+            </div>
+            </div>
+          </div>
+        </Html>
+      )}
+      {/* UI components removed: Scene is now 3D-only */}
+      {debugUI && (
+        <Html fullscreen style={{ pointerEvents: "none", zIndex: 9999 }}>
+          {/* MAIN FRAME */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "40px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "400px",
+              height: "120px",
+              background: "rgba(255,0,0,0.4)",
+              pointerEvents: "none"
+            }}
+          />
+
+          {/* LEFT BLOCK */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "40px",
+              left: "calc(50% - 180px)",
+              width: "80px",
+              height: "120px",
+              background: "rgba(0,255,0,0.4)",
+              pointerEvents: "none"
+            }}
+          />
+
+          {/* RIGHT BLOCK */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "40px",
+              left: "calc(50% + 100px)",
+              width: "80px",
+              height: "120px",
+              background: "rgba(0,0,255,0.4)",
+              pointerEvents: "none"
+            }}
+          />
+        </Html>
+      )}
     </>
   );
 }
