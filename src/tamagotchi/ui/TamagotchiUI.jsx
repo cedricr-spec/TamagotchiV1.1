@@ -198,7 +198,9 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
   ref={uiRef}
   id="tamagotchi-ui"
   style={{
-    position: "relative",
+    position: "absolute",
+    inset: 0,
+    zIndex: 2,
     width: "100%", // 🔥 fill parent
     height: "100%",
     borderRadius: "16px",
@@ -237,6 +239,15 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
         }}
       >
         <div ref={bodyRef} style={{ position: "relative" }}>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              border: "1px solid cyan",
+              boxSizing: "border-box",
+              pointerEvents: "none",
+            }}
+          />
           {/* BODY */}
           <div
   style={{

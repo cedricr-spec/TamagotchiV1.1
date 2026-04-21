@@ -1,5 +1,8 @@
 import React from "react";
 import { useWorldStore } from "../store/worldSlice";
+import { getTreesAround, getGrassAround, getRocksAround, getFlowersAround } from "../utils/decorGenerator";
+import { getDecorCollisionBounds } from "../utils/decorBounds";
+
 import tree1 from "../../spritesheets/trees/tree1.webp";
 import tree2 from "../../spritesheets/trees/tree2.webp";
 import tree3 from "../../spritesheets/trees/tree3.webp";
@@ -8,49 +11,189 @@ import tree5 from "../../spritesheets/trees/tree5.webp";
 import tree6 from "../../spritesheets/trees/tree6.webp";
 import tree7 from "../../spritesheets/trees/tree7.webp";
 import tree8 from "../../spritesheets/trees/tree8.webp";
-import { getTreesAround, DECOR_CONFIG } from "../utils/decorGenerator";
+
+import grass1 from "../../spritesheets/bushes-grass/grass1.webp";
+import grass2 from "../../spritesheets/bushes-grass/grass2.webp";
+import grass3 from "../../spritesheets/bushes-grass/grass3.webp";
+import grass4 from "../../spritesheets/bushes-grass/grass4.webp";
+import grass5 from "../../spritesheets/bushes-grass/grass5.webp";
+import grass6 from "../../spritesheets/bushes-grass/grass6.webp";
+import grass7 from "../../spritesheets/bushes-grass/grass7.webp";
+
+import bigrock1 from "../../spritesheets/rocks/bigrock1.webp";
+import rock1 from "../../spritesheets/rocks/rock1.webp";
+import rock2 from "../../spritesheets/rocks/rock2.webp";
+
+import flower1 from "../../spritesheets/flowers/flower1.webp";
+import flower2 from "../../spritesheets/flowers/flower2.webp";
+import flower3 from "../../spritesheets/flowers/flower3.webp";
+import flower4 from "../../spritesheets/flowers/flower4.webp";
+import flower5 from "../../spritesheets/flowers/flower5.webp";
+import flower6 from "../../spritesheets/flowers/flower6.webp";
+import flower7 from "../../spritesheets/flowers/flower7.webp";
+
+const TREE_ASSETS = [tree1, tree2, tree3, tree4, tree5, tree6, tree7, tree8];
+const GRASS_ASSETS = [grass1, grass2, grass3, grass4, grass5, grass6, grass7];
+const ROCK_ASSETS = [bigrock1, rock1, rock2];
+const FLOWER_ASSETS = [flower1, flower2, flower3, flower4, flower5, flower6, flower7];
+const TREE_DEPTH_SPLIT = 65;
+const ROCK_DEPTH_SPLIT = 90;
+
+function DebugFrame({ item, worldOffset, color }) {
+  const bounds = getDecorCollisionBounds(item);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: bounds.left + worldOffset.x,
+        top: bounds.top + worldOffset.y,
+        width: bounds.right - bounds.left,
+        height: bounds.bottom - bounds.top,
+        border: `1px solid ${color}`,
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
+function getSpriteTransform(item, worldOffset) {
+  return `translate(${item.x + worldOffset.x}px, ${item.y + worldOffset.y}px) translate(-50%, -100%) scale(${item.flip ? -item.scale : item.scale}, ${item.scale})`;
+}
+
+function getSpriteStyle(item, worldOffset, extraStyle = {}) {
+  return {
+    position: "absolute",
+    width: item.width,
+    height: item.height,
+    transform: getSpriteTransform(item, worldOffset),
+    transformOrigin: "bottom center",
+    imageRendering: "pixelated",
+    ...extraStyle,
+  };
+}
+
+function getLayerStyle(zIndex) {
+  return {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    pointerEvents: "none",
+    zIndex,
+  };
+}
 
 export default function DecorLayer() {
   const worldOffset = useWorldStore((s) => s.worldOffset);
 
-  const TREE_ASSETS = [tree1, tree2, tree3, tree4, tree5, tree6, tree7, tree8];
-
   const playerX = -worldOffset.x;
   const playerY = -worldOffset.y;
 
-  // ⚠️ CRITICAL: must stay perfectly in sync with CollisionSystem
-  // same player position + same DECOR_CONFIG
-  const trees = getTreesAround(playerX, playerY, DECOR_CONFIG);
+  const trees = getTreesAround(playerX, playerY);
+  const grass = getGrassAround(playerX, playerY);
+  const rocks = getRocksAround(playerX, playerY);
+  const flowers = getFlowersAround(playerX, playerY);
 
   return (
-    <div
-      data-decor-layer
-      style={{
-        position: "absolute",
-        left: "50%",
-        top: "50%",
-        transform: "translate(-50%, -50%)",
-        pointerEvents: "none",
-        zIndex: 5,
-      }}
-    >
-      {trees.map((tree) => {
-        const spriteIndex = parseInt(tree.id.split("_")[0], 10) % TREE_ASSETS.length;
-        const sprite = TREE_ASSETS[spriteIndex];
-        return (
+    <>
+      <div data-decor-layer style={getLayerStyle(1)}>
+        {flowers.map((flower) => (
           <img
-            key={tree.id}
-            src={sprite}
-            style={{
-              position: "absolute",
-              transform: `translate(${tree.x + worldOffset.x}px, ${tree.y + worldOffset.y}px) translateY(-100%)`,
-              transformOrigin: "bottom center",
-              imageRendering: "pixelated",
-              pointerEvents: "none",
-            }}
+            key={`flower_${flower.id}`}
+            src={FLOWER_ASSETS[flower.spriteIndex % FLOWER_ASSETS.length]}
+            style={getSpriteStyle(flower, worldOffset)}
           />
-        );
-      })}
-    </div>
+        ))}
+
+        {grass.map((blade) => (
+          <img
+            key={`grass_${blade.id}`}
+            src={GRASS_ASSETS[blade.spriteIndex % GRASS_ASSETS.length]}
+            style={getSpriteStyle(blade, worldOffset, { opacity: 1 })}
+          />
+        ))}
+
+        {rocks.map((rock) => (
+          <img
+            key={`rock_back_${rock.id}`}
+            src={ROCK_ASSETS[rock.spriteIndex % ROCK_ASSETS.length]}
+            style={getSpriteStyle(rock, worldOffset, {
+              clipPath: `inset(0 0 ${100 - ROCK_DEPTH_SPLIT}% 0)`,
+            })}
+          />
+        ))}
+
+        {trees.map((tree) => (
+          <img
+            key={`tree_back_${tree.id}`}
+            src={TREE_ASSETS[tree.spriteIndex % TREE_ASSETS.length]}
+            style={getSpriteStyle(tree, worldOffset, {
+              clipPath: `inset(0 0 ${100 - TREE_DEPTH_SPLIT}% 0)`,
+            })}
+          />
+        ))}
+      </div>
+
+      <div style={getLayerStyle(3)}>
+        {rocks.map((rock) => (
+          <img
+            key={`rock_front_${rock.id}`}
+            src={ROCK_ASSETS[rock.spriteIndex % ROCK_ASSETS.length]}
+            style={getSpriteStyle(rock, worldOffset, {
+              clipPath: `inset(${ROCK_DEPTH_SPLIT}% 0 0 0)`,
+            })}
+          />
+        ))}
+
+        {trees.map((tree) => (
+          <img
+            key={`tree_front_${tree.id}`}
+            src={TREE_ASSETS[tree.spriteIndex % TREE_ASSETS.length]}
+            style={getSpriteStyle(tree, worldOffset, {
+              clipPath: `inset(${TREE_DEPTH_SPLIT}% 0 0 0)`,
+            })}
+          />
+        ))}
+      </div>
+
+      <div style={getLayerStyle(20)}>
+        {flowers.map((flower) => (
+          <DebugFrame
+            key={`flower_debug_${flower.id}`}
+            item={flower}
+            worldOffset={worldOffset}
+            color="pink"
+          />
+        ))}
+
+        {grass.map((blade) => (
+          <DebugFrame
+            key={`grass_debug_${blade.id}`}
+            item={blade}
+            worldOffset={worldOffset}
+            color="purple"
+          />
+        ))}
+
+        {rocks.map((rock) => (
+          <DebugFrame
+            key={`rock_debug_${rock.id}`}
+            item={rock}
+            worldOffset={worldOffset}
+            color="red"
+          />
+        ))}
+
+        {trees.map((tree) => (
+          <DebugFrame
+            key={`tree_debug_${tree.id}`}
+            item={tree}
+            worldOffset={worldOffset}
+            color="blue"
+          />
+        ))}
+      </div>
+    </>
   );
 }

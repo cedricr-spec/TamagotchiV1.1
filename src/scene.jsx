@@ -469,22 +469,31 @@ export default function Scene({ starsSeed, mode }) {
                 position: "relative",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center"
+                justifyContent: "center",
+                isolation: "isolate"
               }}>
-                <PetScreen />
+                <div style={{
+                  position: "relative",
+                  zIndex: 1,
+                  width: "100%",
+                  height: "100%"
+                }}>
+                  <PetScreen />
+                </div>
 
                 {/* JAUGES OVERLAY FULL WIDTH */}
                 <div style={{
                   position: "absolute",
-                  top: "8px",                // 👈 move to top
+                  top: "8px",
                   left: 0,
                   width: "100%",
                   display: "flex",
-                  justifyContent: "center", // horizontal center
-                  alignItems: "center",     // vertical alignment within its own height
+                  justifyContent: "center",
+                  alignItems: "center",
                   pointerEvents: "auto",
                   padding: "0 8px",
-                  transform: "translateX(-8px)" // 👈 slight visual centering tweak
+                  transform: "translateX(-8px)",
+                  zIndex: 20
                 }}>
                   <JaugesPanel embedded />
                 </div>
