@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { usePetStore } from "/Users/cedricrandriakoto/Desktop/PRO/PORTFOLIO 2K26/animation-macbook-site/src/tamagotchi/store/usePetstore.js";
+import { usePetStore } from "../tamagotchi/store/usePetstore"
 
 export default function PanelItem({ label, selected = false, onClick }) {
   const [pressed, setPressed] = useState(false)

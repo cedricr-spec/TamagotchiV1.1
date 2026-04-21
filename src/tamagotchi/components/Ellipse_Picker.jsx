@@ -4,7 +4,7 @@ import CTA_ROUNDED from "../../GameActions/CTA_rounded_Game_Action.webp";
 import CTA_DISABLED from "../../GameActions/CTA_rounded_Game_Action_Disabled.webp";
 import CTA_PRESSED from "../../GameActions/CTA_rounded_Game_Action_Pressed.webp";
 import { usePetStore as useStore } from "../store/usePetstore";
-import ICON_CLOSE from "/Users/cedricrandriakoto/Desktop/PRO/PORTFOLIO 2K26/animation-macbook-site/src/hud/Icon_Close_X.svg";
+import ICON_CLOSE from "../../hud/Icon_Close_X.svg";
 import { ACTIONS } from "../../game/actions";
 
 
