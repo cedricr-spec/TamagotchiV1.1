@@ -239,15 +239,6 @@ currentMouth.current.y += (reducedY - currentMouth.current.y) * 0.03
         }}
       >
         <div ref={bodyRef} style={{ position: "relative" }}>
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              border: "1px solid cyan",
-              boxSizing: "border-box",
-              pointerEvents: "none",
-            }}
-          />
           {/* BODY */}
           <div
   style={{

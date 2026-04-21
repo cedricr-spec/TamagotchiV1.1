@@ -1,7 +1,6 @@
 import React from "react";
 import { useWorldStore } from "../store/worldSlice";
 import { getTreesAround, getGrassAround, getRocksAround, getFlowersAround } from "../utils/decorGenerator";
-import { getDecorCollisionBounds } from "../utils/decorBounds";
 
 import tree1 from "../../spritesheets/trees/tree1.webp";
 import tree2 from "../../spritesheets/trees/tree2.webp";
@@ -37,25 +36,6 @@ const GRASS_ASSETS = [grass1, grass2, grass3, grass4, grass5, grass6, grass7];
 const ROCK_ASSETS = [bigrock1, rock1, rock2];
 const FLOWER_ASSETS = [flower1, flower2, flower3, flower4, flower5, flower6, flower7];
 const TREE_DEPTH_SPLIT = 65;
-const ROCK_DEPTH_SPLIT = 90;
-
-function DebugFrame({ item, worldOffset, color }) {
-  const bounds = getDecorCollisionBounds(item);
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: bounds.left + worldOffset.x,
-        top: bounds.top + worldOffset.y,
-        width: bounds.right - bounds.left,
-        height: bounds.bottom - bounds.top,
-        border: `1px solid ${color}`,
-        boxSizing: "border-box",
-      }}
-    />
-  );
-}
 
 function getSpriteTransform(item, worldOffset) {
   return `translate(${item.x + worldOffset.x}px, ${item.y + worldOffset.y}px) translate(-50%, -100%) scale(${item.flip ? -item.scale : item.scale}, ${item.scale})`;
@@ -116,11 +96,9 @@ export default function DecorLayer() {
 
         {rocks.map((rock) => (
           <img
-            key={`rock_back_${rock.id}`}
+            key={`rock_${rock.id}`}
             src={ROCK_ASSETS[rock.spriteIndex % ROCK_ASSETS.length]}
-            style={getSpriteStyle(rock, worldOffset, {
-              clipPath: `inset(0 0 ${100 - ROCK_DEPTH_SPLIT}% 0)`,
-            })}
+            style={getSpriteStyle(rock, worldOffset)}
           />
         ))}
 
@@ -129,68 +107,20 @@ export default function DecorLayer() {
             key={`tree_back_${tree.id}`}
             src={TREE_ASSETS[tree.spriteIndex % TREE_ASSETS.length]}
             style={getSpriteStyle(tree, worldOffset, {
-              clipPath: `inset(0 0 ${100 - TREE_DEPTH_SPLIT}% 0)`,
-            })}
-          />
-        ))}
-      </div>
-
-      <div style={getLayerStyle(3)}>
-        {rocks.map((rock) => (
-          <img
-            key={`rock_front_${rock.id}`}
-            src={ROCK_ASSETS[rock.spriteIndex % ROCK_ASSETS.length]}
-            style={getSpriteStyle(rock, worldOffset, {
-              clipPath: `inset(${ROCK_DEPTH_SPLIT}% 0 0 0)`,
-            })}
-          />
-        ))}
-
-        {trees.map((tree) => (
-          <img
-            key={`tree_front_${tree.id}`}
-            src={TREE_ASSETS[tree.spriteIndex % TREE_ASSETS.length]}
-            style={getSpriteStyle(tree, worldOffset, {
               clipPath: `inset(${TREE_DEPTH_SPLIT}% 0 0 0)`,
             })}
           />
         ))}
       </div>
 
-      <div style={getLayerStyle(20)}>
-        {flowers.map((flower) => (
-          <DebugFrame
-            key={`flower_debug_${flower.id}`}
-            item={flower}
-            worldOffset={worldOffset}
-            color="pink"
-          />
-        ))}
-
-        {grass.map((blade) => (
-          <DebugFrame
-            key={`grass_debug_${blade.id}`}
-            item={blade}
-            worldOffset={worldOffset}
-            color="purple"
-          />
-        ))}
-
-        {rocks.map((rock) => (
-          <DebugFrame
-            key={`rock_debug_${rock.id}`}
-            item={rock}
-            worldOffset={worldOffset}
-            color="red"
-          />
-        ))}
-
+      <div style={getLayerStyle(3)}>
         {trees.map((tree) => (
-          <DebugFrame
-            key={`tree_debug_${tree.id}`}
-            item={tree}
-            worldOffset={worldOffset}
-            color="blue"
+          <img
+            key={`tree_front_${tree.id}`}
+            src={TREE_ASSETS[tree.spriteIndex % TREE_ASSETS.length]}
+            style={getSpriteStyle(tree, worldOffset, {
+              clipPath: `inset(0 0 ${100 - TREE_DEPTH_SPLIT}% 0)`,
+            })}
           />
         ))}
       </div>

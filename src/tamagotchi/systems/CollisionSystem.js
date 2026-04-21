@@ -1,91 +1,54 @@
 import { useEffect } from "react";
 import { useWorldStore } from "../store/worldSlice";
 import { DECOR_CONFIG, getTreesAround, getRocksAround } from "../utils/decorGenerator";
-import { getDecorCollisionBounds } from "../utils/decorBounds";
 
-const PET_WIDTH = 50;
-const PET_HEIGHT = 50;
+const DEBUG = false;
 
-function getPetBounds(pet) {
-  return {
-    left: pet.x - PET_WIDTH / 2,
-    right: pet.x + PET_WIDTH / 2,
-    top: pet.y - PET_HEIGHT,
-    bottom: pet.y,
-  };
-}
+function getBounds(item) {
+  if (item.type === "tree") {
+    const width = item.width * item.scale * 1.4;
+    const height = item.height * item.scale * 1.4;
 
-function boundsIntersect(a, b) {
-  return (
-    a.right > b.left &&
-    a.left < b.right &&
-    a.bottom > b.top &&
-    a.top < b.bottom
-  );
-}
-
-function getBoundsCenter(bounds) {
-  return {
-    x: (bounds.left + bounds.right) / 2,
-    y: (bounds.top + bounds.bottom) / 2,
-  };
-}
-
-function resolveAxisDirection(movement, petBounds, obstacleBounds, axis) {
-  if (axis === "x") {
-    if (movement.x > 0) return -1;
-    if (movement.x < 0) return 1;
-  } else {
-    if (movement.y > 0) return -1;
-    if (movement.y < 0) return 1;
-  }
-
-  const petCenter = getBoundsCenter(petBounds);
-  const obstacleCenter = getBoundsCenter(obstacleBounds);
-
-  if (axis === "x") {
-    return petCenter.x < obstacleCenter.x ? -1 : 1;
-  }
-
-  return petCenter.y < obstacleCenter.y ? -1 : 1;
-}
-
-function resolvePetAgainstBounds(pet, previousPet, obstacleBounds) {
-  const petBounds = getPetBounds(pet);
-
-  if (!boundsIntersect(petBounds, obstacleBounds)) {
-    return pet;
-  }
-
-  const overlapX = Math.min(
-    petBounds.right - obstacleBounds.left,
-    obstacleBounds.right - petBounds.left
-  );
-  const overlapY = Math.min(
-    petBounds.bottom - obstacleBounds.top,
-    obstacleBounds.bottom - petBounds.top
-  );
-  const movement = {
-    x: pet.x - previousPet.x,
-    y: pet.y - previousPet.y,
-  };
-  const resolveHorizontally =
-    overlapX < overlapY ||
-    (overlapX === overlapY && Math.abs(movement.x) >= Math.abs(movement.y));
-
-  if (resolveHorizontally) {
-    const direction = resolveAxisDirection(movement, petBounds, obstacleBounds, "x");
     return {
-      x: pet.x + overlapX * direction,
-      y: pet.y,
+      left: item.x - width / 2,
+      right: item.x + width / 2,
+      top: item.y - height * 0.5,
+      bottom: item.y,
     };
   }
 
-  const direction = resolveAxisDirection(movement, petBounds, obstacleBounds, "y");
+  const width = item.width * item.scale;
+  const height = item.height * item.scale;
+
   return {
-    x: pet.x,
-    y: pet.y + overlapY * direction,
+    left: item.x - width * 0.5,
+    right: item.x + width * 0.5,
+    top: item.y - height,
+    bottom: item.y,
   };
+}
+
+function pointInBounds(point, bounds) {
+  return (
+    point.x > bounds.left &&
+    point.x < bounds.right &&
+    point.y > bounds.top &&
+    point.y < bounds.bottom
+  );
+}
+
+function pathIntersectsBounds(from, to, bounds) {
+  const sweptLeft = Math.min(from.x, to.x);
+  const sweptRight = Math.max(from.x, to.x);
+  const sweptTop = Math.min(from.y, to.y);
+  const sweptBottom = Math.max(from.y, to.y);
+
+  return !(
+    sweptRight < bounds.left ||
+    sweptLeft > bounds.right ||
+    sweptBottom < bounds.top ||
+    sweptTop > bounds.bottom
+  );
 }
 
 export default function CollisionSystem() {
@@ -99,42 +62,38 @@ export default function CollisionSystem() {
         x: -lastOffset.x,
         y: -lastOffset.y,
       };
-      const currentPet = {
+      const pet = {
         x: -worldOffset.x,
         y: -worldOffset.y,
       };
       const rangeX = DECOR_CONFIG.rangeX ?? DECOR_CONFIG.range;
       const rangeY = DECOR_CONFIG.rangeY ?? DECOR_CONFIG.range;
+
       const items = [
-        ...getTreesAround(currentPet.x, currentPet.y),
-        ...getRocksAround(currentPet.x, currentPet.y),
+        ...getTreesAround(pet.x, pet.y),
+        ...getRocksAround(pet.x, pet.y),
       ];
+
       const visibleItems = items.filter((item) => {
-        const dx = item.x - currentPet.x;
-        const dy = item.y - currentPet.y;
+        const dx = item.x - pet.x;
+        const dy = item.y - pet.y;
         return Math.abs(dx) < rangeX && Math.abs(dy) < rangeY;
       });
 
-      let resolvedPet = currentPet;
-
       for (const item of visibleItems) {
-        resolvedPet = resolvePetAgainstBounds(
-          resolvedPet,
-          previousPet,
-          getDecorCollisionBounds(item)
-        );
+        const bounds = getBounds(item);
+
+        if (
+          pointInBounds(pet, bounds) ||
+          pointInBounds(previousPet, bounds) ||
+          pathIntersectsBounds(previousPet, pet, bounds)
+        ) {
+          useWorldStore.setState({ worldOffset: lastOffset });
+          break;
+        }
       }
 
-      const nextOffset = {
-        x: -resolvedPet.x,
-        y: -resolvedPet.y,
-      };
-
-      if (nextOffset.x !== worldOffset.x || nextOffset.y !== worldOffset.y) {
-        useWorldStore.setState({ worldOffset: nextOffset });
-      }
-
-      lastOffset = nextOffset;
+      lastOffset = useWorldStore.getState().worldOffset;
       frameId = requestAnimationFrame(loop);
     };
 

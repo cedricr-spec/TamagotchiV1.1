@@ -6,7 +6,6 @@ export const DECOR_CONFIG = {
 };
 
 export const TREE_VISUAL_SCALE = 1.4;
-export const TREE_COLLISION_HEIGHT_RATIO = 0.5;
 
 const TREE_SPRITE_SIZES = [
   { width: 32, height: 47 },
@@ -258,27 +257,6 @@ function buildFlowerItem(base) {
   const flip = hash(base.x, base.y, 17) > 0.5;
 
   return createDecorItem(base, "flower", width, height, spriteIndex, scale, flip);
-}
-
-export function getDecorCollisionBounds(item) {
-  const width = item.width * item.scale;
-  const height = item.height * item.scale;
-
-  if (item.type === "tree") {
-    return {
-      left: item.x - width / 2,
-      right: item.x + width / 2,
-      top: item.y - height * TREE_COLLISION_HEIGHT_RATIO,
-      bottom: item.y,
-    };
-  }
-
-  return {
-    left: item.x - width / 2,
-    right: item.x + width / 2,
-    top: item.y - height,
-    bottom: item.y,
-  };
 }
 
 function placeItems(bases, buildItem, index, target) {

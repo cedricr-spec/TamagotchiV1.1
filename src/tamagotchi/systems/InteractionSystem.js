@@ -16,7 +16,7 @@ export function handleInteractions(state) {
 
   return (state.entities || []).filter((entity) => {
     const radius =
-      ENTITY_TYPE_CONFIG[entity.type]?.interactionRadius || 50;
+      ENTITY_TYPE_CONFIG[entity.type]?.interactionRadius || 25;
 
     // ✅ PURE world-space distance (no projection)
     return distance(entity, pet) <= radius;
