@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react"
 import PanelItem from "./PanelItem"
 import IconButton from "./IconButton"
 import { HexColorPicker } from "react-colorful"
-import { usePetStore } from "../tamagotchi/store/usePetStore"
+import { usePetStore } from "../tamagotchi/store/usePetstore"
 
 export default function CustomizerPanel({ open, onRandomizeStars, onClose }) {
   const [active, setActive] = useState(null)
