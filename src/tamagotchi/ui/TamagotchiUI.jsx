@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import { usePetStore } from "../store/usePetStore"
+import { usePetStore } from "../store/usePetstore"
 
 function hexToFilter(hex) {
   const color = tinycolor(hex)
