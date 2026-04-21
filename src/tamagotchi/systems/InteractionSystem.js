@@ -5,6 +5,44 @@ import { useEffect } from "react";
 import { useEntityStore } from "../store/entitySlice";
 import { useWorldStore } from "../store/worldSlice";
 
+const PICKUP_RADIUS_BONUS = 18;
+
+function mergeEffects(base = {}, extra = {}) {
+  return {
+    hunger: (base.hunger || 0) + (extra.hunger || 0),
+    energy: (base.energy || 0) + (extra.energy || 0),
+    happiness: (base.happiness || 0) + (extra.happiness || 0),
+    health: (base.health || 0) + (extra.health || 0),
+  };
+}
+
+function hasEffectValue(effects = {}) {
+  return Object.values(effects).some((value) => value !== 0);
+}
+
+function getCollectEffects(entity) {
+  const typeEffects = ENTITY_TYPE_CONFIG[entity.type]?.collectEffects || {};
+  const entityEffects = entity.collectEffects || {};
+  return mergeEffects(typeEffects, entityEffects);
+}
+
+const ENTITY_REWARD_HANDLERS = {
+  carrot: (entity) => {
+    const amount = Math.max(0, Math.floor(entity.rewardAmount ?? 1));
+    if (amount <= 0) return;
+
+    const addCarrotCharge = usePetStore.getState().addCarrotCharge;
+    addCarrotCharge?.(amount);
+  },
+};
+
+function applyEntityReward(entity) {
+  const rewardHandler = ENTITY_REWARD_HANDLERS[entity.reward];
+  if (!rewardHandler) return;
+
+  rewardHandler(entity);
+}
+
 export function handleInteractions(state) {
   const worldOffset = state.worldOffset || { x: 0, y: 0 };
 
@@ -15,8 +53,9 @@ export function handleInteractions(state) {
   };
 
   return (state.entities || []).filter((entity) => {
-    const radius =
+    const baseRadius =
       ENTITY_TYPE_CONFIG[entity.type]?.interactionRadius || 25;
+    const radius = baseRadius + PICKUP_RADIUS_BONUS;
 
     // ✅ PURE world-space distance (no projection)
     return distance(entity, pet) <= radius;
@@ -40,23 +79,27 @@ export default function InteractionSystem() {
       const inRange = handleInteractions(state);
       if (!inRange.length) return;
 
-      const ids = new Set(inRange.map((e) => e.id));
+      const pickupEffects = inRange.reduce(
+        (effects, entity) => mergeEffects(effects, getCollectEffects(entity)),
+        {}
+      );
+      const applyEffects = usePetStore.getState().applyEffects;
 
-      // apply simple effect per entity (optional)
-      const applyAction = usePetStore.getState().applyAction;
-      inRange.forEach((e) => {
-        if (applyAction) {
-          applyAction({
-            effects: { happiness: 1 },
-          });
-        }
+      if (applyEffects && hasEffectValue(pickupEffects)) {
+        applyEffects(pickupEffects);
+      }
+
+      inRange.forEach((entity) => {
+        applyEntityReward(entity);
       });
+
+      const ids = new Set(inRange.map((e) => e.id));
 
       // remove collected entities
       setEntities((s) => ({
         entities: (s.entities || []).filter((e) => !ids.has(e.id)),
       }));
-    }, 120);
+    }, 80);
 
     return () => clearInterval(interval);
   }, []);

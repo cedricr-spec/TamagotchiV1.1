@@ -7,6 +7,9 @@ export const ENTITY_TYPE_CONFIG = {
   [ENTITY_TYPES.FOOD]: {
     label: "Food",
     interactionRadius: 80,
+    collectEffects: {
+      happiness: 1,
+    },
   },
   [ENTITY_TYPES.TOY]: {
     label: "Toy",

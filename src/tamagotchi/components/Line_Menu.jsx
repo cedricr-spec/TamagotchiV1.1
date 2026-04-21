@@ -8,7 +8,7 @@ import { ACTIONS } from "../../game/actions";
 // persistent cooldowns
 const globalCooldowns = {};
 
-export default function LineMenu() {
+export default function LineMenu({ onHover }) {
   const applyAction = useStore((s) => s.applyAction);
   const getState = useStore.getState;
 
@@ -68,10 +68,12 @@ export default function LineMenu() {
               }}
               onMouseEnter={(e) => {
                 if (isDisabled) return;
+                onHover && onHover(item);
                 e.currentTarget.dataset.hover = "true";
                 e.currentTarget.style.transform = "scale(1.1)";
               }}
               onMouseLeave={(e) => {
+                onHover && onHover(null);
                 e.currentTarget.dataset.hover = "false";
                 e.currentTarget.dataset.pressed = "false";
                 e.currentTarget.style.transform = "scale(1)";

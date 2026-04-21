@@ -24,14 +24,22 @@ export default function EntityLayer({ viewport = { width: 0, height: 0 } }) {
       >
         {entities
           .filter((entity) => entity.active)
-          .map((entity) => (
-            <Entity
-              key={entity.id}
-              entity={entity}
-              x={entity.x + (worldOffset?.x || 0)}
-              y={entity.y + (worldOffset?.y || 0)}
-            />
-          ))}
+          .map((entity) => {
+            const safeEntity = {
+              type: "food",
+              spriteKey: "apple",
+              ...entity,
+            };
+
+            return (
+              <Entity
+                key={entity.id}
+                entity={safeEntity}
+                x={entity.x + (worldOffset?.x || 0)}
+                y={entity.y + (worldOffset?.y || 0)}
+              />
+            );
+          })}
       </div>
     </>
   );

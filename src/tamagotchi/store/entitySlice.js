@@ -1,22 +1,43 @@
 import { create } from "zustand";
+import { ENTITY_TYPES } from "../config/entityTypes";
+import { getItemDefinition } from "../config/itemSpriteRegistry";
+
+const DEFAULT_PICKUP_ITEM_KEY = "carrot";
+
+function createEntityId(prefix = "entity") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createPickupEntity(x, y, type = ENTITY_TYPES.FOOD) {
+  const jitter =
+    type === "decor" ? () => 0 : () => (Math.random() - 0.5) * 60;
+  const item =
+    type === ENTITY_TYPES.FOOD
+      ? getItemDefinition(DEFAULT_PICKUP_ITEM_KEY)
+      : null;
+
+  return {
+    id: createEntityId(),
+    x: x + jitter(),
+    y: y + jitter(),
+    type,
+    itemKey: item ? DEFAULT_PICKUP_ITEM_KEY : undefined,
+    spriteKey: item?.worldSpriteKey,
+    reward: item?.reward,
+    rewardAmount: item?.rewardAmount,
+    active: true,
+  };
+}
 
 export const createEntitySlice = (set) => ({
   entities: [],
 
-  spawnEntity: (x, y, type = "food") =>
+  spawnEntity: (x, y, type = ENTITY_TYPES.FOOD) =>
     set((state) => {
-      const jitter = type === "decor" ? () => 0 : () => (Math.random() - 0.5) * 60;
-
       return {
         entities: [
           ...state.entities,
-          {
-            id: `${Date.now()}-${Math.random()}`,
-            x: x + jitter(),
-            y: y + jitter(),
-            type,
-            active: true,
-          },
+          createPickupEntity(x, y, type),
         ],
       };
     }),
@@ -25,7 +46,7 @@ export const createEntitySlice = (set) => ({
       entities: [
         ...state.entities,
         {
-          id: `decor-${Date.now()}-${Math.random()}`,
+          id: createEntityId("decor"),
           x,
           y,
           type: "decor",

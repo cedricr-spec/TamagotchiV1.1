@@ -1,11 +1,26 @@
 import { defaultTheme } from "../../theme"
 import { create } from "zustand"
 
+const clampStat = (value) => Math.min(100, Math.max(0, value))
+
+const normalizeChargeAmount = (amount) => {
+  const safeAmount = Number.isFinite(amount) ? amount : 0
+  return Math.max(0, Math.floor(safeAmount))
+}
+
+const applyEffectsToState = (state, effects = {}) => ({
+  hunger: clampStat(state.hunger + (effects.hunger || 0)),
+  energy: clampStat(state.energy + (effects.energy || 0)),
+  happiness: clampStat(state.happiness + (effects.happiness || 0)),
+  health: clampStat(state.health + (effects.health || 0)),
+})
+
 export const usePetStore = create((set, get) => ({
   hunger: 50,
   energy: 50,
   happiness: 50,
   health: 100,
+  carrotCharges: 0,
   _gameInterval: null,
   _lastAction: 0,
 
@@ -63,6 +78,32 @@ export const usePetStore = create((set, get) => ({
     return now - last > 800;
   },
 
+  canUseCarrot: (amount = 1) => {
+    const safeAmount = normalizeChargeAmount(amount)
+    if (safeAmount === 0) return true
+
+    return get().carrotCharges >= safeAmount
+  },
+
+  addCarrotCharge: (amount = 1) =>
+    set((state) => ({
+      carrotCharges: state.carrotCharges + normalizeChargeAmount(amount)
+    })),
+
+  consumeCarrotCharge: (amount = 1) => {
+    const safeAmount = normalizeChargeAmount(amount)
+
+    if (safeAmount === 0) return true
+
+    if (!get().canUseCarrot(safeAmount)) return false
+
+    set((state) => ({
+      carrotCharges: Math.max(0, state.carrotCharges - safeAmount)
+    }))
+
+    return true
+  },
+
   setActionTime: () => set({ _lastAction: Date.now() }),
 
   feed: () => {
@@ -96,16 +137,22 @@ export const usePetStore = create((set, get) => ({
     }));
   },
 
+  applyEffects: (effects) =>
+    set((state) => applyEffectsToState(state, effects)),
+
   applyAction: (action) => {
-    if (!get().canAct()) return;
+    const carrotCost = normalizeChargeAmount(action?.cost?.carrot)
+
+    if (carrotCost > 0 && !get().canUseCarrot(carrotCost)) return false
+    if (!get().canAct()) return false
     get().setActionTime();
 
     set((state) => ({
-      hunger: Math.min(100, Math.max(0, state.hunger + (action.effects?.hunger || 0))),
-      energy: Math.min(100, Math.max(0, state.energy + (action.effects?.energy || 0))),
-      happiness: Math.min(100, Math.max(0, state.happiness + (action.effects?.happiness || 0))),
-      health: Math.min(100, Math.max(0, state.health + (action.effects?.health || 0))),
+      ...applyEffectsToState(state, action?.effects),
+      carrotCharges: Math.max(0, state.carrotCharges - carrotCost),
     }));
+
+    return true
   },
 
   tick: () =>
