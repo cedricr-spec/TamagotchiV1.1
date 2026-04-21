@@ -35,11 +35,6 @@ export const usePetStore = create((set, get) => ({
     text: "rgba(255,255,0,0.25)",
   },
 
-  toggleDebugUI: () =>
-    set((state) => ({
-      debugUI: !state.debugUI
-    })),
-
   getDebugColor: (layer) => {
     const colors = get().debugColors;
     return colors[layer] || "rgba(255,255,255,0.2)";

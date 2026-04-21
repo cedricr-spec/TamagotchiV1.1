@@ -36,7 +36,6 @@ export default function App() {
 
   const debugUI = usePetStore((s) => s.debugUI);
   const getColor = usePetStore((s) => s.getDebugColor);
-  const toggleDebugUI = usePetStore((s) => s.toggleDebugUI);
   const modelColor = usePetStore((s) => s.theme.modelColor);
 
   useEffect(() => {
@@ -52,17 +51,6 @@ export default function App() {
       usePetStore.getState().stopGame();
     };
   }, []);
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key.toLowerCase() === "u") {
-        toggleDebugUI();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleDebugUI]);
 
   // 🎮 GLOBAL KEYBOARD CONTROLS (desktop)
   useEffect(() => {
