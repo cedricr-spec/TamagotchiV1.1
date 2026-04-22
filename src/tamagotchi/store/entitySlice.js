@@ -8,23 +8,25 @@ function createEntityId(prefix = "entity") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function createPickupEntity(x, y, type = ENTITY_TYPES.FOOD) {
+function createPickupEntity(x, y, type = ENTITY_TYPES.FOOD, options = {}) {
   const jitter =
     type === "decor" ? () => 0 : () => (Math.random() - 0.5) * 60;
   const item =
-    type === ENTITY_TYPES.FOOD
+    (options.itemKey && getItemDefinition(options.itemKey)) ||
+    (type === ENTITY_TYPES.FOOD
       ? getItemDefinition(DEFAULT_PICKUP_ITEM_KEY)
-      : null;
+      : null)
 
   return {
     id: createEntityId(),
     x: x + jitter(),
     y: y + jitter(),
     type,
-    itemKey: item ? DEFAULT_PICKUP_ITEM_KEY : undefined,
-    spriteKey: item?.worldSpriteKey,
-    reward: item?.reward,
-    rewardAmount: item?.rewardAmount,
+    itemKey: options.itemKey || (item ? DEFAULT_PICKUP_ITEM_KEY : undefined),
+    spriteKey: options.spriteKey || item?.worldSpriteKey,
+    reward: options.reward || item?.reward,
+    rewardAmount: options.rewardAmount ?? item?.rewardAmount,
+    collectEffects: options.collectEffects || item?.collectEffects,
     active: true,
   };
 }
@@ -32,12 +34,12 @@ function createPickupEntity(x, y, type = ENTITY_TYPES.FOOD) {
 export const createEntitySlice = (set) => ({
   entities: [],
 
-  spawnEntity: (x, y, type = ENTITY_TYPES.FOOD) =>
+  spawnEntity: (x, y, type = ENTITY_TYPES.FOOD, options = {}) =>
     set((state) => {
       return {
         entities: [
           ...state.entities,
-          createPickupEntity(x, y, type),
+          createPickupEntity(x, y, type, options),
         ],
       };
     }),

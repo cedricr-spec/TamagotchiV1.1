@@ -1,6 +1,7 @@
 export const ENTITY_TYPES = {
   FOOD: "food",
   TOY: "toy",
+  RESOURCE: "resource",
 };
 
 export const ENTITY_TYPE_CONFIG = {
@@ -14,5 +15,9 @@ export const ENTITY_TYPE_CONFIG = {
   [ENTITY_TYPES.TOY]: {
     label: "Toy",
     interactionRadius: 100,
+  },
+  [ENTITY_TYPES.RESOURCE]: {
+    label: "Resource",
+    interactionRadius: 62,
   },
 };

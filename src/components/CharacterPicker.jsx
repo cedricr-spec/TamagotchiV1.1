@@ -1,16 +1,21 @@
 import React, { useMemo, useState } from "react"
+import TintedCtaButton from "./TintedCtaButton"
 import PetSprite from "../tamagotchi/components/PetSprite"
 import { CHARACTER_ROSTER } from "../tamagotchi/config/characterRoster"
 import { useCharacterStore } from "../tamagotchi/store/useCharacterStore"
 import { usePetStore } from "../tamagotchi/store/usePetstore"
 
+import mediumCta from "../hud/CTAs/CTA_Medium_8BIT.webp"
+import mediumCtaPressed from "../hud/CTAs/CTA_Medium_8BIT_Pressed.webp"
 import leftChevron from "../hud/CTAs/CTA_Small_8BIT_Chevron_Left.webp"
 import leftChevronPressed from "../hud/CTAs/CTA_Small_8BIT_Chevron_Left_Pressed.webp"
 import rightChevron from "../hud/CTAs/CTA_Small_8BIT_Chevron_Right.webp"
 import rightChevronPressed from "../hud/CTAs/CTA_Small_8BIT_Chevron_Right_Pressed.webp"
 
 const CHEVRON_BUTTON_SIZE = 52
-const PREVIEW_CHARACTER_SCALE = 5
+const PREVIEW_CHARACTER_SCALE = 3.5
+const PREVIEW_FRAME_ASPECT_RATIO = "3 / 1" // Tweak preview width/height ratio here.
+const RANDOM_BUTTON_WIDTH = "132px"
 
 function ChevronButton({
   label,
@@ -143,6 +148,23 @@ export default function CharacterPicker() {
     }
   }
 
+  const pickRandomCharacter = () => {
+    if (!characters.length) return
+
+    if (characters.length === 1) {
+      setCharacter(characters[0].id)
+      return
+    }
+
+    const candidateCharacters = characters.filter((character) => character.id !== activeCharacterId)
+    const nextCharacter =
+      candidateCharacters[Math.floor(Math.random() * candidateCharacters.length)]
+
+    if (nextCharacter) {
+      setCharacter(nextCharacter.id)
+    }
+  }
+
   return (
     <div
       style={{
@@ -154,9 +176,29 @@ export default function CharacterPicker() {
     >
       <div
         style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
+        <TintedCtaButton
+          ariaLabel="Random character"
+          defaultSrc={mediumCta}
+          pressedSrc={mediumCtaPressed}
+          tintColor={controlColor}
+          label="Random"
+          labelClassName="hud-ui-text hud-ui-text--cta"
+          onClick={pickRandomCharacter}
+          width={RANDOM_BUTTON_WIDTH}
+          height="52px"
+        />
+      </div>
+
+      <div
+        style={{
           position: "relative",
           width: "100%",
-          aspectRatio: "1 / 1",
+          aspectRatio: PREVIEW_FRAME_ASPECT_RATIO,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -199,8 +241,8 @@ export default function CharacterPicker() {
         />
 
         <div
+          className="hud-ui-text"
           style={{
-            color: "white",
             fontSize: "16px",
             textAlign: "center",
             whiteSpace: "nowrap",

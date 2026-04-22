@@ -2,17 +2,77 @@ import React, { useState, useEffect, useRef } from "react"
 import PanelItem from "./PanelItem"
 import IconButton from "./IconButton"
 import CharacterPicker from "./CharacterPicker"
+import TintedCtaButton from "./TintedCtaButton"
 import { HexColorPicker } from "react-colorful"
 import { usePetStore } from "../tamagotchi/store/usePetstore"
+import { useCharacterStore } from "../tamagotchi/store/useCharacterStore"
 
 import menuButton from "../hud/CTAs/CTA_Small_8BIT_Menu.webp"
 import menuButtonPressed from "../hud/CTAs/CTA_Small_8BIT_Menu_Pressed.webp"
 import closeButton from "../hud/CTAs/CTA_Small_8BIT_Close.webp"
 import closeButtonPressed from "../hud/CTAs/CTA_Small_8BIT_Close_Pressed.webp"
+import mediumCta from "../hud/CTAs/CTA_Medium_8BIT.webp"
+import mediumCtaPressed from "../hud/CTAs/CTA_Medium_8BIT_Pressed.webp"
 
 const TOGGLE_BUTTON_SIZE = 52
+const PANEL_SCROLL_BOTTOM_SPACE = "5vh" // Tweak bottom scroll space here.
+const PANEL_CTA_HEIGHT = "52px"
+const COLOR_PICKER_FRAME_STYLE = {
+  width: "100%",
+  maxWidth: "250px",
+  aspectRatio: "1 / 1",
+  margin: "0 auto",
+  position: "relative",
+  zIndex: 1,
+  direction: "ltr",
+  overflow: "visible",
+  touchAction: "none",
+  pointerEvents: "auto",
+}
+const COLOR_PICKER_SECTION_STYLE = {
+  marginTop: "10px",
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+  gap: "12px",
+}
+const COLOR_PICKER_STYLE = {
+  width: "100%",
+  height: "100%",
+  touchAction: "none",
+  pointerEvents: "auto",
+}
+const PRESET_CHARACTER_MAP = {
+  LAVA: "special_1",
+  ICE: "winter_1",
+  NEON: "character_10",
+  NATURE: "spring_1",
+  SUNSET: "summer_1",
+  SPACE: "dg_knight_1",
+  CYBER: "character_21",
+  MONO: "basic_character",
+}
 
-export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
+function PanelActionButton({ label, tintColor, onClick, disabled = false, style }) {
+  return (
+    <TintedCtaButton
+      ariaLabel={label}
+      defaultSrc={mediumCta}
+      pressedSrc={mediumCtaPressed}
+      tintColor={tintColor}
+      label={label}
+      labelClassName="hud-ui-text hud-ui-text--cta"
+      onClick={onClick}
+      disabled={disabled}
+      width="100%"
+      height={PANEL_CTA_HEIGHT}
+      style={style}
+    />
+  )
+}
+
+export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode }) {
   const [active, setActive] = useState(null)
   const [selectedPreset, setSelectedPreset] = useState(null)
   const [isPresetOpen, setIsPresetOpen] = useState(false)
@@ -24,6 +84,7 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
   const setPetColor = usePetStore((s) => s.setPetColor)
   const setModelColor = usePetStore((s) => s.setModelColor)
   const setTheme = usePetStore((s) => s.setTheme)
+  const setCharacter = useCharacterStore((s) => s.setCharacter)
   const debugUI = usePetStore((s) => s.debugUI)
   const theme = usePetStore((s) => s.theme)
   const controlColor = theme?.modelColor || "#8f8f8f"
@@ -38,19 +99,12 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
     },
     future: []
   })
-  const [savePressed, setSavePressed] = useState(false)
   const [starsTemp, setStarsTemp] = useState("#ffffff")
   const [starsSaved, setStarsSaved] = useState("#ffffff")
-  const [starsSavePressed, setStarsSavePressed] = useState(false)
-  const [randomPressed, setRandomPressed] = useState(false)
-  const [togglePressed, setTogglePressed] = useState(false)
+  const [modelTemp, setModelTemp] = useState(modelColor)
+  const [modelSaved, setModelSaved] = useState(modelColor)
 
-  const [petTemp, setPetTemp] = useState(petColor)
-  const [petSaved, setPetSaved] = useState(petColor)
-  const [petSavePressed, setPetSavePressed] = useState(false)
-
-  const isPetDirty = petTemp !== petSaved
-  const isModelDirty = modelColor !== history.present.modelColor
+  const isModelDirty = modelTemp !== modelSaved
 
   const presets = [
     { name: "LAVA", background: "#ff5a1f", starsColor: "#ffb347", petColor: "#ff9a66", modelColor: "#cc2e00" },
@@ -127,9 +181,9 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
   }, [open, onToggle])
 
   useEffect(() => {
-    const c = history.present.color || color
-    setColor(c)
-    setTheme((prev) => ({ ...prev, background: c }))
+    const nextBackground = history.present.color || "#4fd1ff"
+    setColor(nextBackground)
+    setTheme((prev) => ({ ...prev, background: nextBackground }))
 
     if (history.present.starsColor) {
       setStarsTemp(history.present.starsColor)
@@ -142,19 +196,21 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
     }
 
     if (history.present.petColor) {
-      setPetTemp(history.present.petColor)
-      setPetSaved(history.present.petColor)
       setPetColor(history.present.petColor)
     }
 
     if (history.present.modelColor) {
+      setModelTemp(history.present.modelColor)
+      setModelSaved(history.present.modelColor)
       setModelColor(history.present.modelColor)
     }
-  }, [history.present, color, onRandomizeStars, setModelColor, setPetColor, setTheme])
+  }, [history.present, onRandomizeStars, setModelColor, setPetColor, setTheme])
 
-  const toggleButtonImage = open
-    ? (togglePressed ? closeButtonPressed : closeButton)
-    : (togglePressed ? menuButtonPressed : menuButton)
+  useEffect(() => {
+    if (mode === "fullscreen" && active === "stickers") {
+      setActive(null)
+    }
+  }, [active, mode])
 
   const handleTogglePanel = () => {
     if (onToggle) onToggle()
@@ -162,92 +218,26 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
 
   return (
     <>
-      <button
+      <TintedCtaButton
         ref={toggleButtonRef}
-        type="button"
-        aria-label={open ? "Fermer le panneau" : "Ouvrir le panneau"}
-        onContextMenu={(e) => e.preventDefault()}
-        onDragStart={(e) => e.preventDefault()}
-        onPointerDown={(e) => {
-          e.preventDefault()
-          e.currentTarget.setPointerCapture?.(e.pointerId)
-          setTogglePressed(true)
-        }}
-        onPointerUp={(e) => {
-          e.currentTarget.releasePointerCapture?.(e.pointerId)
-          setTogglePressed(false)
-          handleTogglePanel()
-        }}
-        onPointerLeave={() => setTogglePressed(false)}
-        onPointerCancel={() => setTogglePressed(false)}
+        ariaLabel={open ? "Fermer le panneau" : "Ouvrir le panneau"}
+        defaultSrc={open ? closeButton : menuButton}
+        pressedSrc={open ? closeButtonPressed : menuButtonPressed}
+        tintColor={controlColor}
+        onClick={handleTogglePanel}
+        width={`${TOGGLE_BUTTON_SIZE}px`}
+        height={`${TOGGLE_BUTTON_SIZE}px`}
         style={{
           position: "fixed",
           top: "16px",
-          left: "20px",
-          width: `${TOGGLE_BUTTON_SIZE}px`,
-          height: `${TOGGLE_BUTTON_SIZE}px`,
-          border: "none",
-          background: "transparent",
-          padding: 0,
-          margin: 0,
-          cursor: "pointer",
+          right: "20px",
           zIndex: 1000001,
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          WebkitTouchCallout: "none",
-          WebkitTapHighlightColor: "transparent",
-          touchAction: "manipulation"
         }}
-      >
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            overflow: "hidden"
-          }}
-        >
-          <img
-            src={toggleButtonImage}
-            alt=""
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              imageRendering: "pixelated",
-              display: "block",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-              WebkitUserDrag: "none",
-              pointerEvents: "none"
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundColor: controlColor,
-              mixBlendMode: "color",
-              pointerEvents: "none",
-              WebkitMaskImage: `url(${toggleButtonImage})`,
-              WebkitMaskRepeat: "no-repeat",
-              WebkitMaskPosition: "center",
-              WebkitMaskSize: "contain",
-              maskImage: `url(${toggleButtonImage})`,
-              maskRepeat: "no-repeat",
-              maskPosition: "center",
-              maskSize: "contain"
-            }}
-          />
-        </div>
-      </button>
+      />
 
       <div
         ref={panelRef}
-        className="customizer-panel-scroll"
+        className="customizer-panel-scroll hud-ui-text-scope"
         onWheel={(e) => {
           e.stopPropagation()
         }}
@@ -275,6 +265,7 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
           display: "flex",
           flexDirection: "column",
           gap: "20px",
+          paddingBottom: PANEL_SCROLL_BOTTOM_SPACE,
           outline: debugUI ? "2px solid red" : "none",
           overscrollBehaviorY: "auto",
           touchAction: "pan-y",
@@ -300,7 +291,7 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
             style={{
               width: "100%",
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "flex-start",
               alignItems: "center"
             }}
           >
@@ -352,9 +343,9 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
               />
 
               <div
+                className="hud-ui-text"
                 style={{
                   position: "relative",
-                  color: "white",
                   fontSize: "18px",
                   paddingLeft: "20px",
                   paddingRight: "40px",
@@ -402,12 +393,15 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
                         if (p.petColor) {
                           setPetColor(p.petColor)
                           setModelColor(p.modelColor)
-                          setPetTemp(p.petColor)
-                          setPetSaved(p.petColor)
 
                           if (window.setPetColor) {
                             window.setPetColor(p.petColor)
                           }
+                        }
+
+                        const presetCharacterId = PRESET_CHARACTER_MAP[p.name]
+                        if (presetCharacterId) {
+                          setCharacter(presetCharacterId)
                         }
 
                         const newSeed = Date.now()
@@ -448,17 +442,13 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
             onClick={() => setActive(active === "stars" ? null : "stars")}
           />
 
-          <PanelItem
-            label="STICKERS"
-            selected={active === "stickers"}
-            onClick={() => setActive(active === "stickers" ? null : "stickers")}
-          />
-
-          <PanelItem
-            label="PET"
-            selected={active === "pet"}
-            onClick={() => setActive(active === "pet" ? null : "pet")}
-          />
+          {mode !== "fullscreen" && (
+            <PanelItem
+              label="STICKERS"
+              selected={active === "stickers"}
+              onClick={() => setActive(active === "stickers" ? null : "stickers")}
+            />
+          )}
 
           <PanelItem
             label="COULEUR"
@@ -472,10 +462,10 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
           style={{ direction: "ltr" }}
         >
           {active === "background" && (
-            <div style={{ marginTop: "10px" }}>
-              <div style={{ width: "100%" }}>
+            <div style={COLOR_PICKER_SECTION_STYLE}>
+              <div style={COLOR_PICKER_FRAME_STYLE}>
                 <HexColorPicker
-                  style={{ width: "100%" }}
+                  style={COLOR_PICKER_STYLE}
                   color={color}
                   onChange={(newColor) => {
                     setColor(newColor)
@@ -484,350 +474,90 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
                 />
               </div>
 
-              <div style={{ marginTop: "12px", color: "white", fontSize: "14px" }}>
+              <div style={{ color: "white", fontSize: "14px", pointerEvents: "none" }}>
                 {color}
               </div>
 
-              <div
+              <PanelActionButton
+                label="ENREGISTRER"
+                tintColor={controlColor}
+                disabled={!isDirty}
                 onClick={() => {
                   if (!isDirty) return
-                  setSavePressed(true)
-                  setTimeout(() => setSavePressed(false), 150)
                   pushToHistory({ color })
                 }}
-                onPointerDown={() => setSavePressed(true)}
-                onPointerUp={() => setSavePressed(false)}
-                onPointerLeave={() => setSavePressed(false)}
-                onPointerCancel={() => setSavePressed(false)}
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "48px",
-                  marginTop: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isDirty ? "pointer" : "not-allowed",
-                  opacity: isDirty ? 1 : 0.5,
-                  transform: savePressed ? "scale(0.97)" : "scale(1)",
-                  transition: "transform 0.1s ease",
-                  touchAction: "manipulation"
-                }}
-              >
-                <img
-                  src={
-                    !isDirty
-                      ? "/CTA_item_panel_unselected.svg"
-                      : savePressed
-                      ? "/CTA_item_panel_click.svg"
-                      : "/CTA_item_panel_unselected.svg"
-                  }
-                  style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: "none"
-                  }}
-                />
-
-                <div
-                  style={{
-                    position: "relative",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    textAlign: "center",
-                    width: "100%",
-                    pointerEvents: "none"
-                  }}
-                >
-                  ENREGISTRER
-                </div>
-              </div>
+                style={{ marginTop: "16px" }}
+              />
             </div>
           )}
 
           {active === "stars" && (
-            <div style={{ marginTop: "10px", width: "100%" }}>
-              <HexColorPicker
-                style={{ width: "100%" }}
-                color={starsTemp}
-                onChange={(c) => {
-                  setStarsTemp(c)
-                  setTheme((prev) => ({ ...prev, starsColor: c }))
-                }}
-              />
+            <div style={COLOR_PICKER_SECTION_STYLE}>
+              <div style={COLOR_PICKER_FRAME_STYLE}>
+                <HexColorPicker
+                  style={COLOR_PICKER_STYLE}
+                  color={starsTemp}
+                  onChange={(c) => {
+                    setStarsTemp(c)
+                    setTheme((prev) => ({ ...prev, starsColor: c }))
+                  }}
+                />
+              </div>
 
-              <div
+              <PanelActionButton
+                label="ENREGISTRER"
+                tintColor={controlColor}
+                disabled={!isStarsDirty}
                 onClick={() => {
                   if (!isStarsDirty) return
-                  setStarsSavePressed(true)
-                  setTimeout(() => setStarsSavePressed(false), 150)
                   setStarsSaved(starsTemp)
                   setTheme((prev) => ({ ...prev, starsColor: starsTemp }))
                   pushToHistory({ starsColor: starsTemp })
                 }}
-                onPointerDown={() => setStarsSavePressed(true)}
-                onPointerUp={() => setStarsSavePressed(false)}
-                onPointerLeave={() => setStarsSavePressed(false)}
-                onPointerCancel={() => setStarsSavePressed(false)}
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "48px",
-                  marginTop: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isStarsDirty ? "pointer" : "not-allowed",
-                  opacity: isStarsDirty ? 1 : 0.5,
-                  transform: starsSavePressed ? "scale(0.97)" : "scale(1)",
-                  transition: "transform 0.1s ease",
-                  touchAction: "manipulation"
-                }}
-              >
-                <img
-                  src={
-                    !isStarsDirty
-                      ? "/CTA_item_panel_unselected.svg"
-                      : starsSavePressed
-                      ? "/CTA_item_panel_click.svg"
-                      : "/CTA_item_panel_unselected.svg"
-                  }
-                  style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: "none"
-                  }}
-                />
+                style={{ marginTop: "4px" }}
+              />
 
-                <div
-                  style={{
-                    position: "relative",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    textAlign: "center",
-                    width: "100%",
-                    pointerEvents: "none"
-                  }}
-                >
-                  ENREGISTRER
-                </div>
-              </div>
-
-              <div
+              <PanelActionButton
+                label="RANDOMISER"
+                tintColor={controlColor}
                 onClick={() => {
-                  setRandomPressed(true)
-                  setTimeout(() => setRandomPressed(false), 150)
                   const newSeed = Date.now()
                   if (onRandomizeStars) onRandomizeStars(newSeed)
                   pushToHistory({ starsSeed: newSeed })
                 }}
-                onPointerDown={() => setRandomPressed(true)}
-                onPointerUp={() => setRandomPressed(false)}
-                onPointerLeave={() => setRandomPressed(false)}
-                onPointerCancel={() => setRandomPressed(false)}
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "48px",
-                  marginTop: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  transform: randomPressed ? "scale(0.97)" : "scale(1)",
-                  transition: "transform 0.1s ease",
-                  touchAction: "manipulation"
-                }}
-              >
-                <img
-                  src={randomPressed ? "/CTA_item_panel_click.svg" : "/CTA_item_panel_unselected.svg"}
-                  style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: "none"
-                  }}
-                />
-
-                <div
-                  style={{
-                    position: "relative",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    textAlign: "center",
-                    width: "100%",
-                    pointerEvents: "none"
-                  }}
-                >
-                  RANDOMISER
-                </div>
-              </div>
-            </div>
-          )}
-
-          {active === "pet" && (
-            <div style={{ marginTop: "10px", width: "100%" }}>
-              <HexColorPicker
-                style={{ width: "100%" }}
-                color={petTemp}
-                onChange={(c) => {
-                  setPetTemp(c)
-                  setPetColor(c)
-                }}
+                style={{ marginTop: "4px" }}
               />
-
-              <div
-                onClick={() => {
-                  if (!isPetDirty) return
-                  setPetSavePressed(true)
-                  setTimeout(() => setPetSavePressed(false), 150)
-                  setPetSaved(petTemp)
-                  setPetColor(petTemp)
-                  pushToHistory({ petColor: petTemp })
-                }}
-                onPointerDown={() => setPetSavePressed(true)}
-                onPointerUp={() => setPetSavePressed(false)}
-                onPointerLeave={() => setPetSavePressed(false)}
-                onPointerCancel={() => setPetSavePressed(false)}
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "48px",
-                  marginTop: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isPetDirty ? "pointer" : "not-allowed",
-                  opacity: isPetDirty ? 1 : 0.5,
-                  transform: petSavePressed ? "scale(0.97)" : "scale(1)",
-                  transition: "transform 0.1s ease",
-                  touchAction: "manipulation"
-                }}
-              >
-                <img
-                  src={
-                    !isPetDirty
-                      ? "/CTA_item_panel_unselected.svg"
-                      : petSavePressed
-                      ? "/CTA_item_panel_click.svg"
-                      : "/CTA_item_panel_unselected.svg"
-                  }
-                  style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: "none"
-                  }}
-                />
-
-                <div
-                  style={{
-                    position: "relative",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    textAlign: "center",
-                    width: "100%",
-                    pointerEvents: "none"
-                  }}
-                >
-                  ENREGISTRER
-                </div>
-              </div>
             </div>
           )}
 
           {active === "color" && (
-            <div style={{ marginTop: "10px", width: "100%" }}>
-              <HexColorPicker
-                style={{ width: "100%" }}
-                color={modelColor}
-                onChange={(c) => {
-                  setModelColor(c)
-                }}
-              />
-
-              <div style={{ marginTop: "12px", color: "white", fontSize: "14px" }}>
-                {modelColor}
-              </div>
-
-              <div
-                onClick={() => {
-                  if (!isModelDirty) return
-                  setSavePressed(true)
-                  setTimeout(() => setSavePressed(false), 150)
-                  setModelColor(modelColor)
-                  pushToHistory({ modelColor })
-                }}
-                onPointerDown={() => setSavePressed(true)}
-                onPointerUp={() => setSavePressed(false)}
-                onPointerLeave={() => setSavePressed(false)}
-                onPointerCancel={() => setSavePressed(false)}
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "48px",
-                  marginTop: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isModelDirty ? "pointer" : "not-allowed",
-                  opacity: isModelDirty ? 1 : 0.5,
-                  transform: savePressed ? "scale(0.97)" : "scale(1)",
-                  transition: "transform 0.1s ease",
-                  touchAction: "manipulation"
-                }}
-              >
-                <img
-                  src={
-                    !isModelDirty
-                      ? "/CTA_item_panel_unselected.svg"
-                      : savePressed
-                      ? "/CTA_item_panel_click.svg"
-                      : "/CTA_item_panel_unselected.svg"
-                  }
-                  style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    top: 0,
-                    left: 0,
-                    pointerEvents: "none"
+            <div style={COLOR_PICKER_SECTION_STYLE}>
+              <div style={COLOR_PICKER_FRAME_STYLE}>
+                <HexColorPicker
+                  style={COLOR_PICKER_STYLE}
+                  color={modelTemp}
+                  onChange={(c) => {
+                    setModelTemp(c)
                   }}
                 />
-
-                <div
-                  style={{
-                    position: "relative",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    textAlign: "center",
-                    width: "100%",
-                    pointerEvents: "none"
-                  }}
-                >
-                  ENREGISTRER
-                </div>
               </div>
+
+              <div style={{ color: "white", fontSize: "14px", pointerEvents: "none" }}>
+                {modelTemp}
+              </div>
+
+              <PanelActionButton
+                label="ENREGISTRER"
+                tintColor={controlColor}
+                disabled={!isModelDirty}
+                onClick={() => {
+                  if (!isModelDirty) return
+                  setModelSaved(modelTemp)
+                  setModelColor(modelTemp)
+                  pushToHistory({ modelColor: modelTemp })
+                }}
+                style={{ marginTop: "4px" }}
+              />
             </div>
           )}
 
@@ -838,45 +568,15 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
                 style={{ padding: "12px 24px", width: "100%", boxSizing: "border-box" }}
               >
                 <div>Sticker 1</div>
-                <div
+                <PanelActionButton
+                  label="IMPORTER IMAGE"
+                  tintColor={controlColor}
                   onClick={() => {
                     const el = document.getElementById("upload-sticker-1")
                     if (el) el.click()
                   }}
-                  onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
-                  onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  onPointerLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  onPointerCancel={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    maxWidth: "100%",
-                    height: "48px",
-                    marginBottom: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    transition: "transform 0.1s ease",
-                    touchAction: "manipulation"
-                  }}
-                >
-                  <img
-                    src="/CTA_item_panel_unselected.svg"
-                    style={{
-                      position: "absolute",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      top: 0,
-                      left: 0,
-                      pointerEvents: "none"
-                    }}
-                  />
-                  <div style={{ position: "relative", fontSize: "14px" }}>
-                    IMPORTER IMAGE
-                  </div>
-                </div>
+                  style={{ marginBottom: "12px" }}
+                />
 
                 <input
                   id="upload-sticker-1"
@@ -916,45 +616,15 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle }) {
                 }}
               >
                 <div style={{ marginBottom: "10px" }}>Sticker 2</div>
-                <div
+                <PanelActionButton
+                  label="IMPORTER IMAGE"
+                  tintColor={controlColor}
                   onClick={() => {
                     const el = document.getElementById("upload-sticker-2")
                     if (el) el.click()
                   }}
-                  onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
-                  onPointerUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  onPointerLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  onPointerCancel={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    maxWidth: "100%",
-                    height: "48px",
-                    marginBottom: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    transition: "transform 0.1s ease",
-                    touchAction: "manipulation"
-                  }}
-                >
-                  <img
-                    src="/CTA_item_panel_unselected.svg"
-                    style={{
-                      position: "absolute",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      top: 0,
-                      left: 0,
-                      pointerEvents: "none"
-                    }}
-                  />
-                  <div style={{ position: "relative", fontSize: "14px" }}>
-                    IMPORTER IMAGE
-                  </div>
-                </div>
+                  style={{ marginBottom: "12px" }}
+                />
 
                 <input
                   id="upload-sticker-2"

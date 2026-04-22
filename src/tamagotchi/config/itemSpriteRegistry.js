@@ -1,13 +1,15 @@
-// Central registry for item visuals and item-level gameplay metadata.
-// This keeps world pickup sprites and menu icons aligned.
+// Compatibility adapter for legacy world/menu item sprite usage.
+// New inventory items live in itemsRegistry.js + itemSprites.js.
 
-import foodSpritesheet from "../../spritesheets/items_spritesheet/foodspritesheet.webp";
-import carrotIcon from "../../spritesheets/items_spritesheet/carrot.webp";
-import carrotBagIcon from "../../spritesheets/items_spritesheet/carrotbag.webp";
+import foodSpritesheet from "../../spritesheets/items_spritesheet/foodspritesheet.webp"
+import carrotIcon from "../../spritesheets/items_spritesheet/carrot.webp"
+import carrotBagIcon from "../../spritesheets/items_spritesheet/carrotbag.webp"
+import { ITEMS_REGISTRY as INVENTORY_ITEMS } from "./itemsRegistry"
+import { getItemSpriteAsset } from "./itemSprites"
 
-const DEFAULT_ITEM_TYPE = "food";
-const DEFAULT_ITEM_KEY = "apple";
-const DEFAULT_SPRITE_SIZE = 16;
+const DEFAULT_ITEM_TYPE = "food"
+const DEFAULT_ITEM_KEY = "apple"
+const DEFAULT_SPRITE_SIZE = 16
 
 export const ITEM_SPRITE_REGISTRY = {
   food: {
@@ -34,37 +36,49 @@ export const ITEM_SPRITE_REGISTRY = {
       cheese: { col: 6, row: 0 },
     },
   },
-};
+}
 
-export const ITEM_REGISTRY = {
+const LEGACY_ITEM_REGISTRY = {
   carrot: {
+    id: "carrot",
+    name: "Carrot",
     type: "food",
+    emoji: "🥕",
+    sprite: null,
+    spriteKey: "carrot",
+    stackable: true,
+    maxStack: 99,
+    usable: true,
+    equipable: false,
     menuSpriteKey: "carrot",
     worldSpriteKey: "carrotbag",
     reward: "carrot",
     rewardAmount: 1,
   },
-};
+}
 
-function resolveSprite(category, spriteKey) {
-  if (!category || !spriteKey) return null;
+export const ITEM_REGISTRY = {
+  ...LEGACY_ITEM_REGISTRY,
+  ...INVENTORY_ITEMS,
+}
 
-  const item = category.items?.[spriteKey];
-  if (!item) return null;
+function resolveLegacySprite(category, spriteKey) {
+  if (!category || !spriteKey) return null
+
+  const item = category.items?.[spriteKey]
+  if (!item) return null
 
   if (item.src) {
     return {
-      sheet: item.src,
+      src: item.src,
       width: item.width || category.tileWidth || DEFAULT_SPRITE_SIZE,
       height: item.height || category.tileHeight || DEFAULT_SPRITE_SIZE,
-      x: 0,
-      y: 0,
       isDirectAsset: true,
-    };
+    }
   }
 
-  const tileWidth = category.tileWidth || DEFAULT_SPRITE_SIZE;
-  const tileHeight = category.tileHeight || DEFAULT_SPRITE_SIZE;
+  const tileWidth = category.tileWidth || DEFAULT_SPRITE_SIZE
+  const tileHeight = category.tileHeight || DEFAULT_SPRITE_SIZE
 
   return {
     sheet: item.sheet || category.sheet,
@@ -72,35 +86,42 @@ function resolveSprite(category, spriteKey) {
     height: tileHeight,
     x: (item.col || 0) * tileWidth,
     y: (item.row || 0) * tileHeight,
+    backgroundSize: "auto",
     isDirectAsset: false,
-  };
+  }
 }
 
 export function getItemDefinition(itemKey) {
-  return ITEM_REGISTRY[itemKey] || null;
+  return ITEM_REGISTRY[itemKey] || null
 }
 
 export function getItemSprite(type, spriteKey) {
   const category =
-    ITEM_SPRITE_REGISTRY[type] || ITEM_SPRITE_REGISTRY[DEFAULT_ITEM_TYPE];
-  if (!category) return null;
+    ITEM_SPRITE_REGISTRY[type] || ITEM_SPRITE_REGISTRY[DEFAULT_ITEM_TYPE]
+  if (!category) return null
 
   const safeKey =
-    spriteKey && category.items?.[spriteKey] ? spriteKey : DEFAULT_ITEM_KEY;
+    spriteKey && category.items?.[spriteKey] ? spriteKey : DEFAULT_ITEM_KEY
 
-  return resolveSprite(category, safeKey);
+  return resolveLegacySprite(category, safeKey)
 }
 
 export function getItemMenuSprite(itemKey) {
-  const item = getItemDefinition(itemKey);
-  if (!item) return null;
+  const sprite = getItemSpriteAsset(itemKey, "inventory")
+  if (sprite) return sprite
 
-  return getItemSprite(item.type, item.menuSpriteKey);
+  const item = getItemDefinition(itemKey)
+  if (!item?.menuSpriteKey) return null
+
+  return getItemSprite(item.type, item.menuSpriteKey)
 }
 
 export function getItemWorldSprite(itemKey) {
-  const item = getItemDefinition(itemKey);
-  if (!item) return null;
+  const sprite = getItemSpriteAsset(itemKey, "world")
+  if (sprite) return sprite
 
-  return getItemSprite(item.type, item.worldSpriteKey);
+  const item = getItemDefinition(itemKey)
+  if (!item?.worldSpriteKey) return null
+
+  return getItemSprite(item.type, item.worldSpriteKey)
 }

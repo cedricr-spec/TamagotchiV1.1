@@ -5,6 +5,7 @@ import { MAX_ENTITIES, SPAWN_RADIUS } from "../config/spawnConfig";
 import { VISIBLE_MARGIN } from "../config/worldConfig";
 import { ENTITY_TYPES } from "../config/entityTypes";
 import { randomRange } from "../utils/random";
+import { RESOURCE_ITEM_IDS } from "../config/itemsRegistry";
 
 import tree1 from "../../spritesheets/trees/tree1.webp";
 import tree2 from "../../spritesheets/trees/tree2.webp";
@@ -16,10 +17,6 @@ import tree7 from "../../spritesheets/trees/tree7.webp";
 import tree8 from "../../spritesheets/trees/tree8.webp";
 
 let sessionSeed = Math.random() * 100000;
-
-function createEntityId() {
-  return `entity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 function getSpawnPoint(center, viewport) {
   // mix session seed to avoid identical patterns across reloads
@@ -44,6 +41,22 @@ function getSpawnPoint(center, viewport) {
 export default function SpawnSystem() {
   const spawnEntity = useEntityStore((s) => s.spawnEntity);
   const spawnDecorEntity = useEntityStore((s) => s.spawnDecorEntity);
+
+  const spawnResourceAround = (centerX, centerY, minRadius, maxRadius, itemId) => {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+    const jitterX = (Math.random() - 0.5) * 100;
+    const jitterY = (Math.random() - 0.5) * 100;
+
+    const x = centerX + Math.cos(angle) * radius + jitterX;
+    const y = centerY + Math.sin(angle) * radius + jitterY;
+
+    spawnEntity(x, y, ENTITY_TYPES.RESOURCE, {
+      itemKey: itemId,
+      reward: "inventory_item",
+      rewardAmount: 1,
+    });
+  };
 
   useEffect(() => {
     const existing = useEntityStore.getState().entities;
@@ -73,30 +86,49 @@ export default function SpawnSystem() {
   }, []);
 
   useEffect(() => {
+    useEntityStore.setState((state) => ({
+      entities: (state.entities || []).filter(
+        (entity) =>
+          entity.type === "decor" ||
+          (entity.type === ENTITY_TYPES.RESOURCE &&
+            RESOURCE_ITEM_IDS.includes(entity.itemKey))
+      ),
+    }));
+
+    const { worldOffset } = useWorldStore.getState();
+    const centerX = -(worldOffset.x || 0);
+    const centerY = -(worldOffset.y || 0);
+
+    RESOURCE_ITEM_IDS.forEach((itemId, index) => {
+      spawnResourceAround(centerX, centerY, 120 + index * 30, 280 + index * 50, itemId);
+    });
+
+    RESOURCE_ITEM_IDS.forEach((itemId) => {
+      spawnResourceAround(centerX, centerY, 260, 420, itemId);
+    });
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(() => {
+      const existing = useEntityStore.getState().entities;
+      const activePickups = existing.filter((entity) => entity.type !== "decor").length;
+      if (activePickups >= MAX_ENTITIES) return;
+
       const { worldOffset } = useWorldStore.getState();
 
-      const batch = 1 + Math.floor(Math.random() * 3); // 1 to 3 entities
+      const batch = 1 + Math.floor(Math.random() * 3);
       const minRadius = 200;
       const maxRadius = 1200;
 
       for (let i = 0; i < batch; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = minRadius + Math.random() * (maxRadius - minRadius);
-
         const centerX = -(worldOffset.x || 0);
         const centerY = -(worldOffset.y || 0);
+        const itemId =
+          RESOURCE_ITEM_IDS[Math.floor(Math.random() * RESOURCE_ITEM_IDS.length)];
 
-        // add slight randomness offset to avoid circular patterns
-        const jitterX = (Math.random() - 0.5) * 100;
-        const jitterY = (Math.random() - 0.5) * 100;
-
-        const x = centerX + Math.cos(angle) * radius + jitterX;
-        const y = centerY + Math.sin(angle) * radius + jitterY;
-
-        spawnEntity(x, y);
+        spawnResourceAround(centerX, centerY, minRadius, maxRadius, itemId);
       }
-    }, 10000); // 🔥 faster spawn rate
+    }, 7000);
 
     return () => clearInterval(interval);
   }, []);

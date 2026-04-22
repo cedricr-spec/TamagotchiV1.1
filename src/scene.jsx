@@ -407,17 +407,18 @@ export default function Scene({ starsSeed, mode }) {
           prepend
           style={{
             position: "fixed",
-            top: "30%", // 👈 move slightly higher (tweak here)
+            top: "27%", // Tweak fullscreen vertical placement here.
             left: "50%",
-            transform: "translate(-50%, -60%)",
+            transform: "translate(-50%, -62%)",
             pointerEvents: "auto",
             zIndex: 999999
           }}
         >
+          {/* Tweak fullscreen shell height here. */}
           <div style={{
-            width: "clamp(320px, 80vw, 900px)", // 🔥 better responsive width
+            width: "clamp(320px, 78vw, 860px)", // Tweak fullscreen shell width here.
             padding: "clamp(6px, 0.2vw, 12px)", // 🔥 breathing space on small screens
-            height: "clamp(400px, 65vh, 800px)", // 🔥 keep vertical control
+            height: "clamp(360px, 60vh, 720px)", // Tweak fullscreen shell height here.
             borderRadius: "24px",
             background: "rgba(255, 255, 255, 0.08)", // 🔥 glass base
             backdropFilter: "blur(20px)", // 🔥 glass blur
@@ -483,20 +484,26 @@ export default function Scene({ starsSeed, mode }) {
 
                 {/* JAUGES OVERLAY FULL WIDTH */}
                 <div style={{
-                  position: "absolute",
-                  top: "8px",
-                  left: 0,
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  pointerEvents: "auto",
-                  padding: "0 8px",
-                  transform: "translateX(-8px)",
-                  zIndex: 20
-                }}>
-                  <JaugesPanel embedded />
-                </div>
+  position: "absolute",
+  top: "8px",
+  left: 0,
+  width: "100%",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "flex-start",
+  pointerEvents: "auto",
+  zIndex: 20
+}}>
+  <div style={{
+    width: "min(340px, calc(100% - 24px))", // tweak largeur réelle du bloc de jauges ici
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    margin: "0 auto",
+  }}>
+    <JaugesPanel embedded />
+  </div>
+</div>
               </div>
 
 

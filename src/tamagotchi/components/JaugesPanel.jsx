@@ -33,7 +33,7 @@ export default function JaugesPanel({ embedded = false, ...props }) {
     >
       <div
         style={{
-          width: "fit-content",
+          width: embedded ? "min(100%, 520px)" : "fit-content",
           display: "flex",
           flexDirection: "row",
           flexWrap: "wrap",
@@ -51,7 +51,7 @@ export default function JaugesPanel({ embedded = false, ...props }) {
               justifyContent: "center",
               alignItems: "center",
               width: "fit-content",
-              aspectRatio: "876 / 240",
+              flex: "0 0 auto",
             }}
           >
             <GaugeV2 type={type} value={value} />

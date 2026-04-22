@@ -106,7 +106,6 @@ function ControlButton({
 }
 
 export default function PetControls() {
-  const moveWorld = useWorldStore((s) => s.moveWorld);
   const energy = usePetStore((s) => s.energy);
   const theme = usePetStore((s) => s.theme);
   const color = theme?.modelColor || "#8f8f8f";
@@ -126,6 +125,8 @@ export default function PetControls() {
   });
 
   const velocityRef = useRef({ x: 0, y: 0 });
+  const speedRef = useRef({ touchSpeed: 0, keyboardSpeed: 0 });
+  const pendingSpeedRef = useRef(null);
 
   const [pressed, setPressed] = useState({
     up: false,
@@ -148,9 +149,13 @@ export default function PetControls() {
     []
   );
 
+  const hasActiveInput = () =>
+    Object.values(holdRef.current).some(Boolean) ||
+    Object.values(keyboardHoldRef.current).some(Boolean);
+
   useEffect(() => {
-    const baseSpeed = 1.5; // vitesse de base en pixels par frame
-    const keyboardSpeedMultiplier = 0; // tweak ici la vitesse du clavier par rapport aux boutons
+    const baseSpeed = 7; // vitesse de base en pixels par frame
+    const keyboardSpeedMultiplier = 1; // Tweak keyboard speed relative to touch here.
     const minSpeedMultiplier = 0.45;
     const maxEnergy = 100;
 
@@ -161,10 +166,35 @@ export default function PetControls() {
 
     const touchSpeed = baseSpeed * speedMultiplier;
     const keyboardSpeed = touchSpeed * keyboardSpeedMultiplier;
+    const nextSpeed = { touchSpeed, keyboardSpeed };
 
-    const acceleration = 0.25; // + réactif
+    if (hasActiveInput()) {
+      pendingSpeedRef.current = nextSpeed;
+      return;
+    }
+
+    speedRef.current = nextSpeed;
+    pendingSpeedRef.current = null;
+  }, [energy]);
+
+  const syncPressedState = (direction, nextPressed) => {
+    setPressed((prev) => {
+      if (prev[direction] === nextPressed) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [direction]: nextPressed,
+      };
+    });
+  };
+
+  useEffect(() => {
+    const acceleration = 0.25; // + reactif
     const damping = 0.86; // moins glissant
     const stopThreshold = 0.02; // ne coupe plus trop tôt
+    const baseFrameMs = 1000 / 60;
 
     const handleDown = (e) => {
       const key = e.key.toLowerCase();
@@ -178,13 +208,9 @@ export default function PetControls() {
 
         const direction = keyToDirection[key];
 
-        if (direction) {
+        if (direction && !keyboardHoldRef.current[direction]) {
           keyboardHoldRef.current[direction] = true;
-
-          setPressed((prev) => ({
-            ...prev,
-            [direction]: true,
-          }));
+          syncPressedState(direction, true);
         }
       }
     };
@@ -199,23 +225,36 @@ export default function PetControls() {
       ) {
         const direction = keyToDirection[key];
 
-        if (direction) {
+        if (direction && keyboardHoldRef.current[direction]) {
           keyboardHoldRef.current[direction] = false;
-
-          setPressed((prev) => ({
-            ...prev,
-            [direction]: holdRef.current[direction],
-          }));
+          syncPressedState(direction, holdRef.current[direction]);
         }
       }
     };
 
+    const clearKeyboardState = () => {
+      Object.keys(keyboardHoldRef.current).forEach((direction) => {
+        keyboardHoldRef.current[direction] = false;
+        syncPressedState(direction, holdRef.current[direction]);
+      });
+    };
+
     window.addEventListener("keydown", handleDown);
     window.addEventListener("keyup", handleUp);
+    window.addEventListener("blur", clearKeyboardState);
 
     let raf;
+    let lastTime = performance.now();
 
-    const loop = () => {
+    const loop = (time) => {
+      const deltaMs = Math.min(32, Math.max(8, time - lastTime || baseFrameMs));
+      const frameFactor = deltaMs / baseFrameMs;
+      const accelerationFactor = 1 - Math.pow(1 - acceleration, frameFactor);
+      const dampingFactor = Math.pow(damping, frameFactor);
+
+      lastTime = time;
+
+      const { touchSpeed, keyboardSpeed } = speedRef.current;
       let targetDx = 0;
       let targetDy = 0;
 
@@ -229,15 +268,15 @@ export default function PetControls() {
       if (holdRef.current.left) targetDx += touchSpeed;
       if (holdRef.current.right) targetDx -= touchSpeed;
 
-      velocityRef.current.x += (targetDx - velocityRef.current.x) * acceleration;
-      velocityRef.current.y += (targetDy - velocityRef.current.y) * acceleration;
+      velocityRef.current.x += (targetDx - velocityRef.current.x) * accelerationFactor;
+      velocityRef.current.y += (targetDy - velocityRef.current.y) * accelerationFactor;
 
       if (targetDx === 0) {
-        velocityRef.current.x *= damping;
+        velocityRef.current.x *= dampingFactor;
       }
 
       if (targetDy === 0) {
-        velocityRef.current.y *= damping;
+        velocityRef.current.y *= dampingFactor;
       }
 
       if (Math.abs(velocityRef.current.x) < stopThreshold) {
@@ -248,21 +287,27 @@ export default function PetControls() {
         velocityRef.current.y = 0;
       }
 
-      const dx = velocityRef.current.x;
-      const dy = velocityRef.current.y;
+      const dx = velocityRef.current.x * frameFactor;
+      const dy = velocityRef.current.y * frameFactor;
+
+      if (!hasActiveInput() && pendingSpeedRef.current && dx === 0 && dy === 0) {
+        speedRef.current = pendingSpeedRef.current;
+        pendingSpeedRef.current = null;
+      }
 
       if (dx !== 0 || dy !== 0) {
-        moveWorld(dx, dy);
+        useWorldStore.getState().moveWorld(dx, dy);
       }
 
       raf = requestAnimationFrame(loop);
     };
 
-    loop();
+    raf = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener("keydown", handleDown);
       window.removeEventListener("keyup", handleUp);
+      window.removeEventListener("blur", clearKeyboardState);
 
       keyboardHoldRef.current.up = false;
       keyboardHoldRef.current.down = false;
@@ -271,18 +316,15 @@ export default function PetControls() {
 
       velocityRef.current.x = 0;
       velocityRef.current.y = 0;
+      pendingSpeedRef.current = null;
 
       cancelAnimationFrame(raf);
     };
-  }, [moveWorld, keyToDirection, energy]);
+  }, [keyToDirection]);
 
   const setDirectionPressed = (direction, value) => {
     holdRef.current[direction] = value;
-
-    setPressed((prev) => ({
-      ...prev,
-      [direction]: value || keyboardHoldRef.current[direction],
-    }));
+    syncPressedState(direction, value || keyboardHoldRef.current[direction]);
   };
 
   return (

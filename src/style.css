@@ -13,6 +13,34 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+.hud-ui-text-scope {
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.hud-ui-text-scope button,
+.hud-ui-text-scope input,
+.hud-ui-text-scope select,
+.hud-ui-text-scope textarea {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.hud-ui-text {
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.hud-ui-text--cta {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
 /* Background base */
 #bg-base {
   position: fixed;

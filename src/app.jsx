@@ -4,17 +4,21 @@ import { Canvas } from "@react-three/fiber";
 import Scene from "./scene.jsx";
 import CustomizerPanel from "./components/CustomizerPanel";
 import { usePetStore } from "./tamagotchi/store/usePetstore";
-import { useWorldStore } from "./tamagotchi/store/worldSlice";
 import JaugesPanel from "./tamagotchi/components/JaugesPanel";
 import GaugeV2 from "./tamagotchi/components/GaugeV2";
 import LineMenu from "./tamagotchi/components/Line_Menu";
 import PetControls from "./tamagotchi/components/PetControls";
+import InventoryPanel from "./tamagotchi/components/InventoryPanel";
+import TintedCtaButton from "./components/TintedCtaButton";
+import mediumCta from "./hud/CTAs/CTA_Medium_8BIT.webp";
+import mediumCtaPressed from "./hud/CTAs/CTA_Medium_8BIT_Pressed.webp";
 
 export default function App() {
   const [open, setOpen] = useState(false) // 👈 AJOUT
   const [starsColor, setStarsColor] = useState("#ffffff")
   const [starsSeed, setStarsSeed] = useState(0)
   const [mode, setMode] = useState("device"); // "device" | "fullscreen"
+  const [inventoryOpen, setInventoryOpen] = useState(false)
 
   function lightenColor(hex, amount = 0.3) {
     if (!hex) return "#ffffff";
@@ -48,60 +52,6 @@ export default function App() {
 
     return () => {
       usePetStore.getState().stopGame();
-    };
-  }, []);
-
-  // 🎮 GLOBAL KEYBOARD CONTROLS (desktop)
-  useEffect(() => {
-    const isDesktop = window.innerWidth > 768;
-    if (!isDesktop) return;
-
-    const moveWorld = useWorldStore.getState().moveWorld;
-    const keys = {};
-
-    const handleDown = (e) => {
-      const key = e.key.toLowerCase();
-      if (["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(key)) {
-        e.preventDefault();
-        keys[key] = true;
-      }
-    };
-
-    const handleUp = (e) => {
-      const key = e.key.toLowerCase();
-      if (["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(key)) {
-        keys[key] = false;
-      }
-    };
-
-    window.addEventListener("keydown", handleDown);
-    window.addEventListener("keyup", handleUp);
-
-    let raf;
-    const speed = 4;
-
-    const loop = () => {
-      let dx = 0;
-      let dy = 0;
-
-      if (keys["arrowup"] || keys["w"]) dy += speed;
-      if (keys["arrowdown"] || keys["s"]) dy -= speed;
-      if (keys["arrowleft"] || keys["a"]) dx += speed;
-      if (keys["arrowright"] || keys["d"]) dx -= speed;
-
-      if (dx !== 0 || dy !== 0) {
-        moveWorld(dx, dy);
-      }
-
-      raf = requestAnimationFrame(loop);
-    };
-
-    loop();
-
-    return () => {
-      window.removeEventListener("keydown", handleDown);
-      window.removeEventListener("keyup", handleUp);
-      cancelAnimationFrame(raf);
     };
   }, []);
 
@@ -160,65 +110,23 @@ export default function App() {
       <div
         style={{
           position: "fixed",
-          top: "20px",
-          right: "40px",
+          top: "16px",
+          left: "20px",
           zIndex: 10000,
           pointerEvents: "auto"
         }}
       >
-        {(() => {
-          const [pressed, setPressed] = React.useState(false);
-          return (
-            <div
-              onClick={() => setMode(mode === "device" ? "fullscreen" : "device")}
-              onPointerDown={() => setPressed(true)}
-              onPointerUp={() => setPressed(false)}
-              onPointerLeave={() => setPressed(false)}
-              onPointerCancel={() => setPressed(false)}
-              style={{
-                width: "180px",
-                height: "56px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transform: pressed ? "scale(0.97)" : "scale(1)",
-                transition: "transform 0.1s ease",
-                position: "relative",
-                touchAction: "manipulation"
-              }}
-            >
-              <img
-                src={
-                  pressed
-                    ? "/CTA_item_panel_click.svg"
-                    : "/CTA_item_panel_unselected.svg"
-                }
-                style={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  top: 0,
-                  left: 0,
-                  pointerEvents: "none"
-                }}
-              />
-
-              <div
-                style={{
-                  position: "relative",
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  pointerEvents: "none"
-                }}
-              >
-                SWITCH UI
-              </div>
-            </div>
-          );
-        })()}
+        <TintedCtaButton
+          ariaLabel="Switch UI"
+          defaultSrc={mediumCta}
+          pressedSrc={mediumCtaPressed}
+          tintColor={modelColor || "#8f8f8f"}
+          label="Switch UI"
+          labelClassName="hud-ui-text hud-ui-text--cta"
+          onClick={() => setMode(mode === "device" ? "fullscreen" : "device")}
+          width="156px"
+          height="52px"
+        />
       </div>
 
       {mode !== "fullscreen" && (
@@ -264,7 +172,7 @@ export default function App() {
       <div
         style={{
           position: "fixed",
-          bottom: "120px",
+          bottom: "92px",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 200,
@@ -278,7 +186,7 @@ export default function App() {
       <div
         style={{
           position: "fixed",
-          bottom: "20px",
+          bottom: "28px",
           left: "50%",
           transform: "translateX(-50%)",
           width: "90vw",          // 👈 match top container
@@ -298,7 +206,10 @@ export default function App() {
             zIndex: 0
           }} />
         )}
-        <LineMenu />
+        <LineMenu
+          onInventoryToggle={() => setInventoryOpen((prev) => !prev)}
+          inventoryOpen={inventoryOpen}
+        />
       </div>
       <div style={{ position: "relative", pointerEvents: "auto" }}>
         {debugUI && (
@@ -310,11 +221,13 @@ export default function App() {
             zIndex: 0
           }} />
         )}
-        <CustomizerPanel 
-  open={open}
-  onRandomizeStars={(seed) => setStarsSeed(seed)}
-  onToggle={() => setOpen((prev) => !prev)}
-/>
+      <InventoryPanel open={inventoryOpen} />
+      <CustomizerPanel
+        open={open}
+        onRandomizeStars={(seed) => setStarsSeed(seed)}
+        onToggle={() => setOpen((prev) => !prev)}
+        mode={mode}
+      />
       </div>
     </div>
   </div>

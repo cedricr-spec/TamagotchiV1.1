@@ -27,7 +27,7 @@ export default function EntityLayer({ viewport = { width: 0, height: 0 } }) {
           .map((entity) => {
             const safeEntity = {
               type: "food",
-              spriteKey: "apple",
+              spriteKey: entity?.itemKey ? undefined : "apple",
               ...entity,
             };
 

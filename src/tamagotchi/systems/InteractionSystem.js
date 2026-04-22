@@ -4,8 +4,11 @@ import { distance } from "../utils/spatial";
 import { useEffect } from "react";
 import { useEntityStore } from "../store/entitySlice";
 import { useWorldStore } from "../store/worldSlice";
+import { useInventoryStore } from "../store/useInventoryStore";
+import { ENTITY_TYPES } from "../config/entityTypes";
 
 const PICKUP_RADIUS_BONUS = 18;
+const RESOURCE_PICKUP_RADIUS_BONUS = 8; // Tweak world resource pickup precision here.
 
 function mergeEffects(base = {}, extra = {}) {
   return {
@@ -33,14 +36,24 @@ const ENTITY_REWARD_HANDLERS = {
 
     const addCarrotCharge = usePetStore.getState().addCarrotCharge;
     addCarrotCharge?.(amount);
+
+    return true;
+  },
+  inventory_item: (entity) => {
+    const amount = Math.max(0, Math.floor(entity.rewardAmount ?? 1));
+    if (amount <= 0 || !entity.itemKey) return false;
+
+    return useInventoryStore.getState().addItem(entity.itemKey, amount);
   },
 };
 
 function applyEntityReward(entity) {
-  const rewardHandler = ENTITY_REWARD_HANDLERS[entity.reward];
-  if (!rewardHandler) return;
+  if (!entity.reward) return true;
 
-  rewardHandler(entity);
+  const rewardHandler = ENTITY_REWARD_HANDLERS[entity.reward];
+  if (!rewardHandler) return true;
+
+  return rewardHandler(entity) !== false;
 }
 
 export function handleInteractions(state) {
@@ -55,7 +68,11 @@ export function handleInteractions(state) {
   return (state.entities || []).filter((entity) => {
     const baseRadius =
       ENTITY_TYPE_CONFIG[entity.type]?.interactionRadius || 25;
-    const radius = baseRadius + PICKUP_RADIUS_BONUS;
+    const radius =
+      baseRadius +
+      (entity.type === ENTITY_TYPES.RESOURCE
+        ? RESOURCE_PICKUP_RADIUS_BONUS
+        : PICKUP_RADIUS_BONUS);
 
     // ✅ PURE world-space distance (no projection)
     return distance(entity, pet) <= radius;
@@ -79,7 +96,10 @@ export default function InteractionSystem() {
       const inRange = handleInteractions(state);
       if (!inRange.length) return;
 
-      const pickupEffects = inRange.reduce(
+      const collected = inRange.filter((entity) => applyEntityReward(entity))
+      if (!collected.length) return
+
+      const pickupEffects = collected.reduce(
         (effects, entity) => mergeEffects(effects, getCollectEffects(entity)),
         {}
       );
@@ -89,11 +109,7 @@ export default function InteractionSystem() {
         applyEffects(pickupEffects);
       }
 
-      inRange.forEach((entity) => {
-        applyEntityReward(entity);
-      });
-
-      const ids = new Set(inRange.map((e) => e.id));
+      const ids = new Set(collected.map((e) => e.id));
 
       // remove collected entities
       setEntities((s) => ({
