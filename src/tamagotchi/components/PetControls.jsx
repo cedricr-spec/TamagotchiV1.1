@@ -84,6 +84,12 @@ function ControlButton({ image, pressedImage, pressed, onPress, onRelease, label
 export default function PetControls() {
   const moveWorld = useWorldStore((s) => s.moveWorld);
   const keysRef = useRef({});
+  const holdRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+  });
   const theme = usePetStore((s) => s.theme);
   const color = theme?.modelColor || "#8f8f8f";
 
@@ -148,10 +154,10 @@ export default function PetControls() {
       let dx = 0;
       let dy = 0;
 
-      if (keys["arrowup"] || keys["w"]) dy += speed;
-      if (keys["arrowdown"] || keys["s"]) dy -= speed;
-      if (keys["arrowleft"] || keys["a"]) dx += speed;
-      if (keys["arrowright"] || keys["d"]) dx -= speed;
+      if (keys["arrowup"] || keys["w"] || holdRef.current.up) dy += speed;
+      if (keys["arrowdown"] || keys["s"] || holdRef.current.down) dy -= speed;
+      if (keys["arrowleft"] || keys["a"] || holdRef.current.left) dx += speed;
+      if (keys["arrowright"] || keys["d"] || holdRef.current.right) dx -= speed;
 
       if (dx !== 0 || dy !== 0) {
         moveWorld(dx, dy);
@@ -170,6 +176,7 @@ export default function PetControls() {
   }, [moveWorld, keyToDirection]);
 
   const setDirectionPressed = (direction, value) => {
+    holdRef.current[direction] = value;
     setPressed((prev) => ({ ...prev, [direction]: value }));
   };
 
@@ -178,7 +185,8 @@ export default function PetControls() {
       style={{
         position: "fixed",
         bottom: "20px",
-        left: "20px",
+        left: "50%",
+        transform: "translateX(-50%)",
         zIndex: 999,
         display: "grid",
         gridTemplateColumns: "repeat(3, 52px)",
@@ -196,7 +204,6 @@ export default function PetControls() {
         color={color}
         onPress={() => {
           setDirectionPressed("up", true);
-          moveWorld(0, 20);
         }}
         onRelease={() => setDirectionPressed("up", false)}
       />
@@ -210,7 +217,6 @@ export default function PetControls() {
         color={color}
         onPress={() => {
           setDirectionPressed("left", true);
-          moveWorld(20, 0);
         }}
         onRelease={() => setDirectionPressed("left", false)}
       />
@@ -222,7 +228,6 @@ export default function PetControls() {
         color={color}
         onPress={() => {
           setDirectionPressed("down", true);
-          moveWorld(0, -20);
         }}
         onRelease={() => setDirectionPressed("down", false)}
       />
@@ -234,7 +239,6 @@ export default function PetControls() {
         color={color}
         onPress={() => {
           setDirectionPressed("right", true);
-          moveWorld(-20, 0);
         }}
         onRelease={() => setDirectionPressed("right", false)}
       />

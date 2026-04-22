@@ -407,9 +407,9 @@ export default function Scene({ starsSeed, mode }) {
           prepend
           style={{
             position: "fixed",
-            top: "45%", // 👈 move slightly higher (tweak here)
+            top: "30%", // 👈 move slightly higher (tweak here)
             left: "50%",
-            transform: "translate(-50%, -55%)",
+            transform: "translate(-50%, -60%)",
             pointerEvents: "auto",
             zIndex: 999999
           }}

@@ -2,7 +2,7 @@
 
 export const DECOR_CONFIG = {
   rangeX: 380,
-  rangeY: 250,
+  rangeY: 280,
 };
 
 export const TREE_VISUAL_SCALE = 1.4;

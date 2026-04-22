@@ -26,7 +26,7 @@ export const usePetStore = create((set, get) => ({
 
   theme: defaultTheme,
 
-  debugUI: true,
+  debugUI: false,
 
   debugColors: {
     layout: "rgba(255,0,0,0.25)",
