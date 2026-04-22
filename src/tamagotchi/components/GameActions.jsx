@@ -67,10 +67,13 @@ export default function GameActions({ onHover, onAction }) {
               return next;
             });
           }}
-          onMouseDown={() => setPressed(true)}
-          onMouseUp={() => setPressed(false)}
-          onMouseLeave={() => { setPressed(false); setHover(false); }}
-          onMouseEnter={() => setHover(true)}
+          onPointerDown={() => setPressed(true)}
+          onPointerUp={() => setPressed(false)}
+          onPointerLeave={() => { setPressed(false); setHover(false); }}
+          onPointerCancel={() => { setPressed(false); setHover(false); }}
+          onPointerEnter={(e) => {
+            if (e.pointerType !== "touch") setHover(true);
+          }}
           onFocus={(e) => e.target.blur()}
           style={{
             width: 72,
@@ -89,6 +92,7 @@ export default function GameActions({ onHover, onAction }) {
             position: "relative",
             zIndex: 2,
             flexShrink: 0,
+            touchAction: "manipulation",
           }}
         >
           {debugUI && (

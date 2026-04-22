@@ -34,7 +34,8 @@ export default function IconButton({
         objectFit: "contain",
         cursor: "pointer",
         transition: "transform 0.15s ease",
-        transform: active ? "scale(0.95)" : "scale(1)"
+        transform: active ? "scale(0.95)" : "scale(1)",
+        touchAction: "manipulation"
       }}
     />
   )

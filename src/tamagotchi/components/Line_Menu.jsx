@@ -80,32 +80,24 @@ export default function LineMenu({ onHover }) {
                 cooldownsRef.current[buttonKey] = now + item.cooldown * 1000;
                 forceUpdate(v => v + 1);
               }}
-              onMouseEnter={() => {
+              onPointerEnter={(e) => {
                 if (isDisabled) return;
+                if (e.pointerType === "touch") return;
                 onHover && onHover(item);
               }}
-              onMouseLeave={() => {
+              onPointerLeave={() => {
                 onHover && onHover(null);
                 setPressedKey(null);
               }}
-              onMouseDown={() => {
+              onPointerDown={() => {
                 if (isDisabled) return;
                 setPressedKey(buttonKey);
               }}
-              onMouseUp={() => {
+              onPointerUp={() => {
                 if (isDisabled) return;
                 setPressedKey(null);
               }}
-              onTouchStart={(e) => {
-                if (isDisabled) return;
-                e.preventDefault();
-                setPressedKey(buttonKey);
-              }}
-              onTouchEnd={() => {
-                if (isDisabled) return;
-                setPressedKey(null);
-              }}
-              onTouchCancel={() => {
+              onPointerCancel={() => {
                 setPressedKey(null);
               }}
               style={{
@@ -113,7 +105,8 @@ export default function LineMenu({ onHover }) {
                 position: "relative",
                 width: "100%",
                 height: "100%",
-                overflow: "hidden"
+                overflow: "hidden",
+                touchAction: "manipulation"
               }}
             >
               <img

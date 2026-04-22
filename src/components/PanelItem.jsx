@@ -11,9 +11,10 @@ export default function PanelItem({ label, selected = false, onClick }) {
   return (
     <div
   onClick={onClick}
-  onMouseDown={() => setPressed(true)}
-  onMouseUp={() => setPressed(false)}
-  onMouseLeave={() => setPressed(false)}
+  onPointerDown={() => setPressed(true)}
+  onPointerUp={() => setPressed(false)}
+  onPointerLeave={() => setPressed(false)}
+  onPointerCancel={() => setPressed(false)}
   style={{
     position: "relative",
     width: "100%",
@@ -25,6 +26,7 @@ export default function PanelItem({ label, selected = false, onClick }) {
     transform: pressed ? "scale(0.97)" : "scale(1)",
     transition: "transform 0.1s ease",
     outline: debugUI ? "2px solid red" : "none",
+    touchAction: "manipulation",
   }}
 >
       {/* BACKGROUND SVG */}

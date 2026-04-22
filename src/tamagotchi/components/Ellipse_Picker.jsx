@@ -82,6 +82,9 @@ export default function EllipsePicker({
     }, 280);
   };
 
+  const getHoverScale = (pointerType, baseScale = 1) =>
+    pointerType === "touch" ? baseScale : 1.1;
+
   return (
     <div
       style={{
@@ -148,10 +151,16 @@ export default function EllipsePicker({
         )}
         <div
           onClick={handleClose}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = `scale(1.1)`)}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = `scale(${visible ? 1 : 0.6})`)}
-          onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
-          onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+          onPointerEnter={(e) => {
+            if (e.pointerType === "touch") return;
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onPointerLeave={(e) => (e.currentTarget.style.transform = `scale(${visible ? 1 : 0.6})`)}
+          onPointerDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
+          onPointerUp={(e) => {
+            e.currentTarget.style.transform = `scale(${getHoverScale(e.pointerType, visible ? 1 : 0.6)})`;
+          }}
+          onPointerCancel={(e) => (e.currentTarget.style.transform = `scale(${visible ? 1 : 0.6})`)}
           style={{
             width: closeBtnSize,
             height: closeBtnSize,
@@ -169,6 +178,7 @@ export default function EllipsePicker({
             transition: "transform 0.22s ease, opacity 0.18s ease",
             transformOrigin: "center",
             pointerEvents: "auto",
+            touchAction: "manipulation",
           }}
         >
           <img src={ICON_CLOSE} alt="close" style={{ width: "35%", height: "35%" }} />
@@ -222,26 +232,32 @@ export default function EllipsePicker({
                 cooldownsRef.current[`${item.id}_${i}`] = now + item.cooldown * 1000;
                 forceUpdate(v => v + 1);
               }}
-              onMouseEnter={(e) => {
+              onPointerEnter={(e) => {
                 if (isDisabled) return;
+                if (e.pointerType === "touch") return;
                 onHover && onHover(item);
                 e.currentTarget.dataset.hover = "true";
                 e.currentTarget.style.transform = "scale(1.1)";
               }}
-              onMouseLeave={(e) => {
+              onPointerLeave={(e) => {
                 e.currentTarget.dataset.hover = "false";
                 e.currentTarget.dataset.pressed = "false";
                 e.currentTarget.style.transform = "scale(1)";
               }}
-              onMouseDown={(e) => {
+              onPointerDown={(e) => {
                 if (isDisabled) return;
                 e.currentTarget.dataset.pressed = "true";
                 e.currentTarget.style.transform = "scale(0.92)";
               }}
-              onMouseUp={(e) => {
+              onPointerUp={(e) => {
                 if (isDisabled) return;
                 e.currentTarget.dataset.pressed = "false";
-                e.currentTarget.style.transform = "scale(1.1)";
+                e.currentTarget.style.transform = `scale(${getHoverScale(e.pointerType)})`;
+              }}
+              onPointerCancel={(e) => {
+                e.currentTarget.dataset.hover = "false";
+                e.currentTarget.dataset.pressed = "false";
+                e.currentTarget.style.transform = "scale(1)";
               }}
               style={{
                 width: btnSize,
@@ -263,6 +279,7 @@ export default function EllipsePicker({
                 filter: "none",
                 opacity: 1,
                 pointerEvents: "auto",
+                touchAction: "manipulation",
               }}
               ref={(el) => {
                 if (!el) return;

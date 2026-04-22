@@ -14,20 +14,33 @@ import controlRightPressed from "../../hud/Control_Keys/Control_Right_Pressed.we
 
 const CONTROL_SIZE = 52;
 
-function ControlButton({ image, pressedImage, pressed, onPress, onRelease, label, color }) {
+function ControlButton({
+  image,
+  pressedImage,
+  pressed,
+  onPress,
+  onRelease,
+  label,
+  color,
+}) {
   const displayImage = pressed ? pressedImage || image : image;
+
   return (
     <button
       aria-label={label}
-      onMouseDown={onPress}
-      onMouseUp={onRelease}
-      onMouseLeave={onRelease}
-      onTouchStart={(e) => {
+      type="button"
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      onPointerDown={(e) => {
         e.preventDefault();
+        e.currentTarget.setPointerCapture?.(e.pointerId);
         onPress();
       }}
-      onTouchEnd={onRelease}
-      onTouchCancel={onRelease}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+        onRelease();
+      }}
+      onPointerCancel={onRelease}
       style={{
         width: `${CONTROL_SIZE}px`,
         height: `${CONTROL_SIZE}px`,
@@ -37,6 +50,11 @@ function ControlButton({ image, pressedImage, pressed, onPress, onRelease, label
         cursor: "pointer",
         position: "relative",
         pointerEvents: "auto",
+        touchAction: "manipulation",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       <div
@@ -50,12 +68,18 @@ function ControlButton({ image, pressedImage, pressed, onPress, onRelease, label
         <img
           src={displayImage}
           alt=""
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
           style={{
             width: "100%",
             height: "100%",
             objectFit: "contain",
             imageRendering: "pixelated",
             display: "block",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            WebkitUserDrag: "none",
+            pointerEvents: "none",
           }}
         />
 
@@ -83,15 +107,25 @@ function ControlButton({ image, pressedImage, pressed, onPress, onRelease, label
 
 export default function PetControls() {
   const moveWorld = useWorldStore((s) => s.moveWorld);
-  const keysRef = useRef({});
+  const energy = usePetStore((s) => s.energy);
+  const theme = usePetStore((s) => s.theme);
+  const color = theme?.modelColor || "#8f8f8f";
+
   const holdRef = useRef({
     up: false,
     down: false,
     left: false,
     right: false,
   });
-  const theme = usePetStore((s) => s.theme);
-  const color = theme?.modelColor || "#8f8f8f";
+
+  const keyboardHoldRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+  });
+
+  const velocityRef = useRef({ x: 0, y: 0 });
 
   const [pressed, setPressed] = useState({
     up: false,
@@ -115,30 +149,63 @@ export default function PetControls() {
   );
 
   useEffect(() => {
-    const isDesktop = window.innerWidth > 768;
-    if (!isDesktop) return;
+    const baseSpeed = 1.5; // vitesse de base en pixels par frame
+    const keyboardSpeedMultiplier = 0; // tweak ici la vitesse du clavier par rapport aux boutons
+    const minSpeedMultiplier = 0.45;
+    const maxEnergy = 100;
 
-    const speed = 4;
+    const clampedEnergy = Math.max(0, Math.min(maxEnergy, energy ?? maxEnergy));
+    const energyRatio = clampedEnergy / maxEnergy;
+    const speedMultiplier =
+      minSpeedMultiplier + energyRatio * (1 - minSpeedMultiplier);
+
+    const touchSpeed = baseSpeed * speedMultiplier;
+    const keyboardSpeed = touchSpeed * keyboardSpeedMultiplier;
+
+    const acceleration = 0.25; // + réactif
+    const damping = 0.86; // moins glissant
+    const stopThreshold = 0.02; // ne coupe plus trop tôt
 
     const handleDown = (e) => {
       const key = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
+
+      if (
+        ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
+          key
+        )
+      ) {
         e.preventDefault();
-        keysRef.current[key] = true;
+
         const direction = keyToDirection[key];
+
         if (direction) {
-          setPressed((prev) => ({ ...prev, [direction]: true }));
+          keyboardHoldRef.current[direction] = true;
+
+          setPressed((prev) => ({
+            ...prev,
+            [direction]: true,
+          }));
         }
       }
     };
 
     const handleUp = (e) => {
       const key = e.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
-        keysRef.current[key] = false;
+
+      if (
+        ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
+          key
+        )
+      ) {
         const direction = keyToDirection[key];
+
         if (direction) {
-          setPressed((prev) => ({ ...prev, [direction]: false }));
+          keyboardHoldRef.current[direction] = false;
+
+          setPressed((prev) => ({
+            ...prev,
+            [direction]: holdRef.current[direction],
+          }));
         }
       }
     };
@@ -149,15 +216,40 @@ export default function PetControls() {
     let raf;
 
     const loop = () => {
-      const keys = keysRef.current;
+      let targetDx = 0;
+      let targetDy = 0;
 
-      let dx = 0;
-      let dy = 0;
+      if (keyboardHoldRef.current.up) targetDy += keyboardSpeed;
+      if (keyboardHoldRef.current.down) targetDy -= keyboardSpeed;
+      if (keyboardHoldRef.current.left) targetDx += keyboardSpeed;
+      if (keyboardHoldRef.current.right) targetDx -= keyboardSpeed;
 
-      if (keys["arrowup"] || keys["w"] || holdRef.current.up) dy += speed;
-      if (keys["arrowdown"] || keys["s"] || holdRef.current.down) dy -= speed;
-      if (keys["arrowleft"] || keys["a"] || holdRef.current.left) dx += speed;
-      if (keys["arrowright"] || keys["d"] || holdRef.current.right) dx -= speed;
+      if (holdRef.current.up) targetDy += touchSpeed;
+      if (holdRef.current.down) targetDy -= touchSpeed;
+      if (holdRef.current.left) targetDx += touchSpeed;
+      if (holdRef.current.right) targetDx -= touchSpeed;
+
+      velocityRef.current.x += (targetDx - velocityRef.current.x) * acceleration;
+      velocityRef.current.y += (targetDy - velocityRef.current.y) * acceleration;
+
+      if (targetDx === 0) {
+        velocityRef.current.x *= damping;
+      }
+
+      if (targetDy === 0) {
+        velocityRef.current.y *= damping;
+      }
+
+      if (Math.abs(velocityRef.current.x) < stopThreshold) {
+        velocityRef.current.x = 0;
+      }
+
+      if (Math.abs(velocityRef.current.y) < stopThreshold) {
+        velocityRef.current.y = 0;
+      }
+
+      const dx = velocityRef.current.x;
+      const dy = velocityRef.current.y;
 
       if (dx !== 0 || dy !== 0) {
         moveWorld(dx, dy);
@@ -171,13 +263,26 @@ export default function PetControls() {
     return () => {
       window.removeEventListener("keydown", handleDown);
       window.removeEventListener("keyup", handleUp);
+
+      keyboardHoldRef.current.up = false;
+      keyboardHoldRef.current.down = false;
+      keyboardHoldRef.current.left = false;
+      keyboardHoldRef.current.right = false;
+
+      velocityRef.current.x = 0;
+      velocityRef.current.y = 0;
+
       cancelAnimationFrame(raf);
     };
-  }, [moveWorld, keyToDirection]);
+  }, [moveWorld, keyToDirection, energy]);
 
   const setDirectionPressed = (direction, value) => {
     holdRef.current[direction] = value;
-    setPressed((prev) => ({ ...prev, [direction]: value }));
+
+    setPressed((prev) => ({
+      ...prev,
+      [direction]: value || keyboardHoldRef.current[direction],
+    }));
   };
 
   return (
@@ -202,9 +307,7 @@ export default function PetControls() {
         pressed={pressed.up}
         label="Move up"
         color={color}
-        onPress={() => {
-          setDirectionPressed("up", true);
-        }}
+        onPress={() => setDirectionPressed("up", true)}
         onRelease={() => setDirectionPressed("up", false)}
       />
       <div />
@@ -215,31 +318,27 @@ export default function PetControls() {
         pressed={pressed.left}
         label="Move left"
         color={color}
-        onPress={() => {
-          setDirectionPressed("left", true);
-        }}
+        onPress={() => setDirectionPressed("left", true)}
         onRelease={() => setDirectionPressed("left", false)}
       />
+
       <ControlButton
         image={controlDown}
         pressedImage={controlDownPressed}
         pressed={pressed.down}
         label="Move down"
         color={color}
-        onPress={() => {
-          setDirectionPressed("down", true);
-        }}
+        onPress={() => setDirectionPressed("down", true)}
         onRelease={() => setDirectionPressed("down", false)}
       />
+
       <ControlButton
         image={controlRight}
         pressedImage={controlRightPressed}
         pressed={pressed.right}
         label="Move right"
         color={color}
-        onPress={() => {
-          setDirectionPressed("right", true);
-        }}
+        onPress={() => setDirectionPressed("right", true)}
         onRelease={() => setDirectionPressed("right", false)}
       />
     </div>

@@ -157,8 +157,10 @@ canvas {
   transition: background 0.2s;
 }
 
-.preset-item:hover {
-  background: rgba(255,255,255,0.08);
+@media (hover: hover) {
+  .preset-item:hover {
+    background: rgba(255,255,255,0.08);
+  }
 }
 
 .panel-frame {
@@ -271,8 +273,10 @@ canvas {
   color: white;
 }
 
-.preset-popin-content div:hover {
-  background: rgba(255,255,255,0.12);
+@media (hover: hover) {
+  .preset-popin-content div:hover {
+    background: rgba(255,255,255,0.12);
+  }
 }
 
 .preset-section {
@@ -374,4 +378,22 @@ canvas {
   --hud-grad-1: #00ffc8;
   --hud-grad-2: #00a6ff;
   --hud-grad-3: #7b5cff;
+}
+
+/* Customizer panel scrollbar */
+.customizer-panel-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.customizer-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.customizer-panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+}
+
+.customizer-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.7);
 }

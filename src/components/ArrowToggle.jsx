@@ -16,8 +16,11 @@ export default function ArrowToggle({ open, onClick }) {
     <img
       src={src}
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onPointerEnter={(e) => {
+        if (e.pointerType !== "touch") setHover(true)
+      }}
+      onPointerLeave={() => setHover(false)}
+      onPointerCancel={() => setHover(false)}
       style={{
         position: "fixed",
         top: "50%",
@@ -26,7 +29,8 @@ export default function ArrowToggle({ open, onClick }) {
         transformOrigin: "center",
         cursor: "pointer",
         zIndex: 20,
-        transition: "left 0.35s ease"
+        transition: "left 0.35s ease",
+        touchAction: "manipulation"
       }}
     />
   )

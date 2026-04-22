@@ -10,8 +10,11 @@ export default function CustomizerButton({ onClick }) {
         ? "/CTA_personnaliser_hover.svg" 
         : "/CTA_personnaliser.svg"}
       
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onPointerEnter={(e) => {
+        if (e.pointerType !== "touch") setHover(true)
+      }}
+      onPointerLeave={() => setHover(false)}
+      onPointerCancel={() => setHover(false)}
       onClick={onClick}
 
       style={{
@@ -21,7 +24,8 @@ export default function CustomizerButton({ onClick }) {
         transform: "translateY(-50%)",
         width: "220px",
         cursor: "pointer",
-        zIndex: 20
+        zIndex: 20,
+        touchAction: "manipulation"
       }}
     />
   )

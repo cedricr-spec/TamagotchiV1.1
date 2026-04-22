@@ -2,8 +2,7 @@ import * as React from "react";
 import { useState, useEffect } from "react"; // 👈 AJOUT
 import { Canvas } from "@react-three/fiber";
 import Scene from "./scene.jsx";
-import CustomizerPanel from "./components/CustomizerPanel"
-import ArrowToggle from "./components/ArrowToggle"
+import CustomizerPanel from "./components/CustomizerPanel";
 import { usePetStore } from "./tamagotchi/store/usePetstore";
 import { useWorldStore } from "./tamagotchi/store/worldSlice";
 import JaugesPanel from "./tamagotchi/components/JaugesPanel";
@@ -158,9 +157,6 @@ export default function App() {
           }}
         />
       )}
-      <div style={{ pointerEvents: "auto" }}>
-        <ArrowToggle open={open} onClick={() => setOpen(!open)} />
-      </div>
       <div
         style={{
           position: "fixed",
@@ -175,9 +171,10 @@ export default function App() {
           return (
             <div
               onClick={() => setMode(mode === "device" ? "fullscreen" : "device")}
-              onMouseDown={() => setPressed(true)}
-              onMouseUp={() => setPressed(false)}
-              onMouseLeave={() => setPressed(false)}
+              onPointerDown={() => setPressed(true)}
+              onPointerUp={() => setPressed(false)}
+              onPointerLeave={() => setPressed(false)}
+              onPointerCancel={() => setPressed(false)}
               style={{
                 width: "180px",
                 height: "56px",
@@ -187,7 +184,8 @@ export default function App() {
                 cursor: "pointer",
                 transform: pressed ? "scale(0.97)" : "scale(1)",
                 transition: "transform 0.1s ease",
-                position: "relative"
+                position: "relative",
+                touchAction: "manipulation"
               }}
             >
               <img
@@ -313,10 +311,10 @@ export default function App() {
           }} />
         )}
         <CustomizerPanel 
-          open={open} 
-          onRandomizeStars={(seed) => setStarsSeed(seed)}
-          onClose={() => setOpen(false)}
-        />
+  open={open}
+  onRandomizeStars={(seed) => setStarsSeed(seed)}
+  onToggle={() => setOpen((prev) => !prev)}
+/>
       </div>
     </div>
   </div>

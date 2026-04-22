@@ -22,7 +22,7 @@ export default function PetScreen() {
       {/* 🌍 WORLD BACKGROUND */}
       <PrairieBackground />
 
-      {/* 🌿 DECOR */}z
+      {/* 🌿 DECOR */}
       <DecorLayer />
 
       {/* 🌟 ENTITIES */}
