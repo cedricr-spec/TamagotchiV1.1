@@ -184,7 +184,7 @@ export default function PetControls() {
     <div
       style={{
         position: "fixed",
-        bottom: "20px",
+        bottom: "20%",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 999,

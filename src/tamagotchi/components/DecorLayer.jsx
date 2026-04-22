@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useWorldStore } from "../store/worldSlice";
 import { getTreesAround, getGrassAround, getRocksAround, getFlowersAround } from "../utils/decorGenerator";
 
@@ -37,6 +37,24 @@ const ROCK_ASSETS = [bigrock1, rock1, rock2];
 const FLOWER_ASSETS = [flower1, flower2, flower3, flower4, flower5, flower6, flower7];
 const TREE_DEPTH_SPLIT = 65;
 
+const LAYER_STYLE_BACK = {
+  position: "absolute",
+  left: "50%",
+  top: "50%",
+  transform: "translate(-50%, -50%)",
+  pointerEvents: "none",
+  zIndex: 1,
+};
+
+const LAYER_STYLE_FRONT = {
+  position: "absolute",
+  left: "50%",
+  top: "50%",
+  transform: "translate(-50%, -50%)",
+  pointerEvents: "none",
+  zIndex: 3,
+};
+
 function getSpriteTransform(item, worldOffset) {
   return `translate(${item.x + worldOffset.x}px, ${item.y + worldOffset.y}px) translate(-50%, -100%) scale(${item.flip ? -item.scale : item.scale}, ${item.scale})`;
 }
@@ -53,31 +71,20 @@ function getSpriteStyle(item, worldOffset, extraStyle = {}) {
   };
 }
 
-function getLayerStyle(zIndex) {
-  return {
-    position: "absolute",
-    left: "50%",
-    top: "50%",
-    transform: "translate(-50%, -50%)",
-    pointerEvents: "none",
-    zIndex,
-  };
-}
-
 export default function DecorLayer() {
   const worldOffset = useWorldStore((s) => s.worldOffset);
 
   const playerX = -worldOffset.x;
   const playerY = -worldOffset.y;
 
-  const trees = getTreesAround(playerX, playerY);
-  const grass = getGrassAround(playerX, playerY);
-  const rocks = getRocksAround(playerX, playerY);
-  const flowers = getFlowersAround(playerX, playerY);
+  const trees = useMemo(() => getTreesAround(playerX, playerY), [playerX, playerY]);
+  const grass = useMemo(() => getGrassAround(playerX, playerY), [playerX, playerY]);
+  const rocks = useMemo(() => getRocksAround(playerX, playerY), [playerX, playerY]);
+  const flowers = useMemo(() => getFlowersAround(playerX, playerY), [playerX, playerY]);
 
   return (
     <>
-      <div data-decor-layer style={getLayerStyle(1)}>
+      <div data-decor-layer style={LAYER_STYLE_BACK}>
         {flowers.map((flower) => (
           <img
             key={`flower_${flower.id}`}
@@ -113,7 +120,7 @@ export default function DecorLayer() {
         ))}
       </div>
 
-      <div style={getLayerStyle(3)}>
+      <div style={LAYER_STYLE_FRONT}>
         {trees.map((tree) => (
           <img
             key={`tree_front_${tree.id}`}

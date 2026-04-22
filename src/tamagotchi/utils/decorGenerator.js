@@ -87,6 +87,7 @@ const FLOWER_CONFIG = {
 
 let layoutCacheKey = null;
 let layoutCacheValue = null;
+const decorBaseCache = new Map();
 
 function hash(x, y, seed = 0) {
   const h = (x * 374761393 + y * 668265263 + seed * 1442695040888963407) | 0;
@@ -142,8 +143,7 @@ function getSpriteSize(spriteSizes, spriteIndex) {
   return spriteSizes[spriteIndex % spriteSizes.length];
 }
 
-function generateDecor(playerX, playerY, config) {
-  const { cellSize, density, seed, jitter = 0.5 } = config;
+function getDecorBoundsKey(playerX, playerY, cellSize) {
   const { rangeX, rangeY } = DECOR_CONFIG;
 
   const startX = Math.floor((playerX - rangeX) / cellSize);
@@ -151,10 +151,35 @@ function generateDecor(playerX, playerY, config) {
   const startY = Math.floor((playerY - rangeY) / cellSize);
   const endY = Math.ceil((playerY + rangeY) / cellSize);
 
+  return { startX, endX, startY, endY };
+}
+
+function getConfigCacheKey(config, bounds) {
+  return [
+    config.seed,
+    config.cellSize,
+    config.density,
+    config.jitter ?? 0.5,
+    bounds.startX,
+    bounds.endX,
+    bounds.startY,
+    bounds.endY,
+  ].join("|");
+}
+
+function generateDecor(playerX, playerY, config) {
+  const { cellSize, density, seed, jitter = 0.5 } = config;
+  const bounds = getDecorBoundsKey(playerX, playerY, cellSize);
+  const cacheKey = getConfigCacheKey(config, bounds);
+
+  if (decorBaseCache.has(cacheKey)) {
+    return decorBaseCache.get(cacheKey);
+  }
+
   const items = [];
 
-  for (let gx = startX; gx <= endX; gx++) {
-    for (let gy = startY; gy <= endY; gy++) {
+  for (let gx = bounds.startX; gx <= bounds.endX; gx++) {
+    for (let gy = bounds.startY; gy <= bounds.endY; gy++) {
       const worldX = gx * cellSize;
       const worldY = gy * cellSize;
 
@@ -170,6 +195,13 @@ function generateDecor(playerX, playerY, config) {
         y: worldY + jy,
       });
     }
+  }
+
+  decorBaseCache.set(cacheKey, items);
+
+  if (decorBaseCache.size > 24) {
+    const oldestKey = decorBaseCache.keys().next().value;
+    decorBaseCache.delete(oldestKey);
   }
 
   return items;
@@ -307,7 +339,18 @@ function placeFlowers(bases, index, target) {
 }
 
 function generateDecorLayout(playerX, playerY) {
-  const cacheKey = `${playerX}|${playerY}|${DECOR_CONFIG.range}`;
+  const treeBounds = getDecorBoundsKey(playerX, playerY, TREE_CONFIG.cellSize);
+  const rockBounds = getDecorBoundsKey(playerX, playerY, ROCK_CONFIG.cellSize);
+  const flowerBounds = getDecorBoundsKey(playerX, playerY, FLOWER_CONFIG.cellSize);
+  const grassBounds = getDecorBoundsKey(playerX, playerY, GRASS_CONFIG.cellSize);
+
+  const cacheKey = [
+    treeBounds.startX, treeBounds.endX, treeBounds.startY, treeBounds.endY,
+    rockBounds.startX, rockBounds.endX, rockBounds.startY, rockBounds.endY,
+    flowerBounds.startX, flowerBounds.endX, flowerBounds.startY, flowerBounds.endY,
+    grassBounds.startX, grassBounds.endX, grassBounds.startY, grassBounds.endY,
+  ].join("|");
+
   if (layoutCacheKey === cacheKey && layoutCacheValue) {
     return layoutCacheValue;
   }
