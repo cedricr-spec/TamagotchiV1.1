@@ -134,6 +134,17 @@ export default function PetControls() {
     left: false,
     right: false,
   });
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(pointer: coarse)");
+
+    const update = () => setIsTouchDevice(media.matches);
+
+    update();
+    media.addEventListener("change", update);
+
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const keyToDirection = useMemo(
     () => ({
@@ -338,7 +349,7 @@ export default function PetControls() {
         display: "grid",
         gridTemplateColumns: "repeat(3, 52px)",
         gridTemplateRows: "repeat(2, 52px)",
-        gap: "8px",
+        gap: isTouchDevice ? "24px" : "8px",
         pointerEvents: "none",
       }}
     >

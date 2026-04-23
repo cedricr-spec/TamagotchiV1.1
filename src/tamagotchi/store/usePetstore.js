@@ -16,9 +16,9 @@ const applyEffectsToState = (state, effects = {}) => ({
 })
 
 export const usePetStore = create((set, get) => ({
-  hunger: 50,
-  energy: 50,
-  happiness: 50,
+  hunger: 100,
+  energy: 100,
+  happiness: 100,
   health: 100,
   carrotCharges: 0,
   _gameInterval: null,
@@ -152,9 +152,9 @@ export const usePetStore = create((set, get) => ({
 
   tick: () =>
     set((state) => ({
-      hunger: Math.max(state.hunger - 1, 0),
-      energy: Math.max(state.energy - 0.5, 0),
-      happiness: Math.max(state.happiness - 0.5, 0)
+      hunger: Math.max(state.hunger - 0.5, 0),
+      energy: Math.max(state.energy - 0.25, 0),
+      happiness: Math.max(state.happiness - 0.25, 0)
     })),
 
   startGame: () => {
@@ -169,10 +169,10 @@ export const usePetStore = create((set, get) => ({
 
       if (lowCount > 0) {
         set({
-          health: Math.max(0, health - 0.5 * lowCount)
+          health: Math.max(0, health - 0.25 * lowCount)
         });
       }
-    }, 1000);
+    }, 1500);
 
     set({ _gameInterval: id });
   },

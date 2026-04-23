@@ -1,61 +1,16 @@
 // Compatibility adapter for legacy world/menu item sprite usage.
 // New inventory items live in itemsRegistry.js + itemSprites.js.
 
-import foodSpritesheet from "../../spritesheets/items_spritesheet/foodspritesheet.webp"
-import carrotIcon from "../../spritesheets/items_spritesheet/carrot.webp"
-import carrotBagIcon from "../../spritesheets/items_spritesheet/carrotbag.webp"
 import { ITEMS_REGISTRY as INVENTORY_ITEMS } from "./itemsRegistry"
 import { getItemSpriteAsset } from "./itemSprites"
 
 const DEFAULT_ITEM_TYPE = "food"
-const DEFAULT_ITEM_KEY = "apple"
+const DEFAULT_ITEM_KEY = null
 const DEFAULT_SPRITE_SIZE = 16
 
-export const ITEM_SPRITE_REGISTRY = {
-  food: {
-    sheet: foodSpritesheet,
-    tileWidth: 16,
-    tileHeight: 16,
+export const ITEM_SPRITE_REGISTRY = {}
 
-    items: {
-      apple: { col: 0, row: 0 },
-      meat: { col: 1, row: 0 },
-      fish: { col: 2, row: 0 },
-      berry: { col: 3, row: 0 },
-      carrot: {
-        src: carrotIcon,
-        width: DEFAULT_SPRITE_SIZE,
-        height: DEFAULT_SPRITE_SIZE,
-      },
-      carrotbag: {
-        src: carrotBagIcon,
-        width: DEFAULT_SPRITE_SIZE,
-        height: DEFAULT_SPRITE_SIZE,
-      },
-      bread: { col: 5, row: 0 },
-      cheese: { col: 6, row: 0 },
-    },
-  },
-}
-
-const LEGACY_ITEM_REGISTRY = {
-  carrot: {
-    id: "carrot",
-    name: "Carrot",
-    type: "food",
-    emoji: "🥕",
-    sprite: null,
-    spriteKey: "carrot",
-    stackable: true,
-    maxStack: 99,
-    usable: true,
-    equipable: false,
-    menuSpriteKey: "carrot",
-    worldSpriteKey: "carrotbag",
-    reward: "carrot",
-    rewardAmount: 1,
-  },
-}
+const LEGACY_ITEM_REGISTRY = {}
 
 export const ITEM_REGISTRY = {
   ...LEGACY_ITEM_REGISTRY,
@@ -102,6 +57,8 @@ export function getItemSprite(type, spriteKey) {
 
   const safeKey =
     spriteKey && category.items?.[spriteKey] ? spriteKey : DEFAULT_ITEM_KEY
+
+  if (!safeKey || !category.items?.[safeKey]) return null
 
   return resolveLegacySprite(category, safeKey)
 }

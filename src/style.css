@@ -38,7 +38,10 @@ body {
 
 .hud-ui-text--cta {
   font-size: 12px;
+  font-family: sans-serif;
+  font-weight: 1000;
   text-transform: uppercase;
+  margin-bottom: 2px;
 }
 
 /* Background base */

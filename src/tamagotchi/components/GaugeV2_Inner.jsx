@@ -7,7 +7,7 @@ export default function GaugeV2_Inner({ value = 0 }) {
   // CONFIG (pixel perfect based on your specs)
   const CHUNK_WIDTH = 48;
   const GAP = 12;
-  const TOTAL_CHUNKS = 9; // adjust if needed
+  const TOTAL_CHUNKS = 10; // adjust if needed
 
   const activeChunks = Math.round((value / 100) * TOTAL_CHUNKS);
   // 🔥 COLOR (green → orange → red)
