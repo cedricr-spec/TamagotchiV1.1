@@ -7,7 +7,7 @@ import ItemVisual from "./ItemVisual";
 
 const ENTITY_SCALE = 2;
 
-export default function Entity({ entity, x = 0, y = 0 }) {
+const Entity = React.memo(function Entity({ entity, x = 0, y = 0 }) {
   const type = entity?.type || "food";
   const spriteKey = entity?.spriteKey || "apple";
   const itemSprite = entity?.itemKey ? getItemWorldSprite(entity.itemKey) : null;
@@ -28,10 +28,9 @@ export default function Entity({ entity, x = 0, y = 0 }) {
           justifyContent: "center",
           background: "rgba(15, 15, 15, 0.78)",
           borderRadius: "999px",
-          border: "1px solid rgba(255,255,255,0.16)",
-          boxShadow: "0 6px 14px rgba(0,0,0,0.18)",
+          border: "1px solid rgba(255, 255, 255, 0.04)",
           transform: `translate(${x}px, ${y}px) translate(-50%, -100%)`,
-          zIndex: 10,
+          zIndex: 999,
           pointerEvents: "none",
         }}
       >
@@ -95,4 +94,6 @@ export default function Entity({ entity, x = 0, y = 0 }) {
       )}
     </div>
   );
-}
+})
+
+export default Entity;

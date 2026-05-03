@@ -7,7 +7,9 @@ import {
 } from "../config/characterRoster"
 import { DEFAULT_PERSISTENT_STATE } from "../config/sharedAnimationMap"
 import { getAnimationDefinition, resolvePetAnimationState } from "../lib/petAnimationResolver"
-import { getFramePosition, getScaledSpriteMetrics } from "../lib/spritesheetUtils"
+import { getScaledSpriteMetrics } from "../lib/spritesheetUtils"
+import { getPetSpriteRenderModel } from "../lib/petSpriteRenderModel"
+import { getPhaserDebugFlags, subscribePhaserDebugFlags } from "../phaser/phaserDebugFlags"
 import { useCharacterStore } from "../store/useCharacterStore"
 import { usePetStore } from "../store/usePetstore"
 import { useWorldStore } from "../store/worldSlice"
@@ -33,6 +35,11 @@ export default function PetSprite({
   const facingDirection = useWorldStore((state) => state.facingDirection)
   const petColor = usePetStore((state) => state.theme?.petColor || "#ffffff")
   const health = usePetStore((state) => state.health)
+
+  const [phaserFlags, setPhaserFlags] = useState(getPhaserDebugFlags)
+  const suppressReactPlayer = !previewMode && phaserFlags.showPhaserPlayer || phaserFlags.showPhaserPlayerPreview
+
+  useEffect(() => subscribePhaserDebugFlags(setPhaserFlags), [])
 
   const [frameIndex, setFrameIndex] = useState(0)
   const previousHealthRef = useRef(health)
@@ -78,7 +85,7 @@ export default function PetSprite({
   const completedAnimationRef = useRef(false)
 
   useEffect(() => {
-    if (previewMode) return
+    if (previewMode || suppressReactPlayer) return
     if (!lastMoveAt) return
 
     setMovementActive(true)
@@ -88,10 +95,10 @@ export default function PetSprite({
     }, MOVEMENT_IDLE_DELAY)
 
     return () => window.clearTimeout(timeoutId)
-  }, [lastMoveAt, previewMode, setMovementActive])
+  }, [lastMoveAt, previewMode, setMovementActive, suppressReactPlayer])
 
   useEffect(() => {
-    if (previewMode) return
+    if (previewMode || suppressReactPlayer) return
     if (!import.meta.env.DEV) return
 
     window.petSpriteDebug = {
@@ -110,10 +117,10 @@ export default function PetSprite({
     return () => {
       delete window.petSpriteDebug
     }
-  }, [previewMode])
+  }, [previewMode, suppressReactPlayer])
 
   useEffect(() => {
-    if (previewMode) return
+    if (previewMode || suppressReactPlayer) return
     const previousHealth = previousHealthRef.current
 
     if (health <= 0) {
@@ -125,16 +132,17 @@ export default function PetSprite({
     }
 
     previousHealthRef.current = health
-  }, [health, persistentState, playOneShot, previewMode, setPersistentState, transientState])
+  }, [health, persistentState, playOneShot, previewMode, setPersistentState, transientState, suppressReactPlayer])
 
   useEffect(() => {
+    if (suppressReactPlayer) return
     animationStartRef.current = performance.now()
     completedAnimationRef.current = false
     setFrameIndex(0)
-  }, [resolvedAnimationState, targetCharacterId])
+  }, [resolvedAnimationState, targetCharacterId, suppressReactPlayer])
 
   useEffect(() => {
-    if (!animation) return
+    if (!animation || suppressReactPlayer) return
 
     let frameRequestId = 0
 
@@ -167,12 +175,25 @@ export default function PetSprite({
     frameRequestId = requestAnimationFrame(updateFrame)
 
     return () => cancelAnimationFrame(frameRequestId)
-  }, [animation, clearTransientState, resolvedAnimationState, transientState])
+  }, [animation, clearTransientState, resolvedAnimationState, transientState, suppressReactPlayer])
 
-  if (!activeCharacter) return null
+  if (suppressReactPlayer || !activeCharacter) return null
+
+  const resolvedFacingDirection = forceFacingDirection || (previewMode ? "right" : facingDirection)
+  const renderModel = getPetSpriteRenderModel({
+    activeCharacterId: targetCharacterId,
+    persistentState,
+    transientState,
+    movementActive: previewMode ? false : movementActive,
+    facingDirection: resolvedFacingDirection,
+    frameIndex,
+    scaleOverride,
+  })
+
+  if (!renderModel) return null
 
   const baseCharacterScale = activeCharacter.scale ?? DEFAULT_CHARACTER_SCALE
-  const characterScale = scaleOverride ?? baseCharacterScale
+  const characterScale = renderModel.scale
   const metrics = getScaledSpriteMetrics(characterScale)
   const baseShadowScale = shadow?.scale ?? baseCharacterScale
   const shadowScaleRatio = baseCharacterScale > 0 ? baseShadowScale / baseCharacterScale : 1
@@ -183,12 +204,10 @@ export default function PetSprite({
   const shadowOffsetX = shadow?.offsetX ?? 0
   const shadowOffsetY = shadow?.offsetY ?? 0
   const shadowOpacity = shadow?.opacity ?? 1
-  const framePosition = getFramePosition(animation, frameIndex)
-  const frameX = framePosition.x * metrics.scale
-  const frameY = framePosition.y * metrics.scale
-  const safeLabel = `${activeCharacter.name} ${resolvedAnimationState || DEFAULT_PERSISTENT_STATE}`
-  const resolvedFacingDirection = forceFacingDirection || (previewMode ? "right" : facingDirection)
-  const spriteFlipScale = resolvedFacingDirection === "left" ? -1 : 1
+  const frameX = renderModel.frameX * metrics.scale
+  const frameY = renderModel.frameY * metrics.scale
+  const safeLabel = `${activeCharacter.name} ${renderModel.animationState || DEFAULT_PERSISTENT_STATE}`
+  const spriteFlipScale = renderModel.flipX ? -1 : 1
 
   const viewportStyle = {
     position: "relative",

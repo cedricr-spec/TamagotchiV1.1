@@ -4,25 +4,40 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import StarsField from "./components/StarsField";
 import PetScreen from "./tamagotchi/components/PetScreen";
-import JaugesPanel from "./tamagotchi/components/JaugesPanel";
 import { usePetStore } from "./tamagotchi/store/usePetstore";
 
 function getMeshBounds(root) {
   const meshBox = new THREE.Box3();
   const childBox = new THREE.Box3();
   const hasMesh = { current: false };
-  root.updateMatrixWorld(true);
+
+  root.updateWorldMatrix(true, true);
+  const inverseRootMatrix = root.matrixWorld.clone().invert();
+
   root.traverse((child) => {
-    if (!child.isMesh) return;
+    if (!child.isMesh || !child.geometry) return;
+
     hasMesh.current = true;
-    childBox.setFromObject(child);
+
+    if (!child.geometry.boundingBox) {
+      child.geometry.computeBoundingBox();
+    }
+
+    child.updateWorldMatrix(true, false);
+    childBox
+      .copy(child.geometry.boundingBox)
+      .applyMatrix4(child.matrixWorld)
+      .applyMatrix4(inverseRootMatrix);
+
     meshBox.union(childBox);
   });
+
   return hasMesh.current ? meshBox : new THREE.Box3().setFromObject(root);
 }
 
 export default function Scene({ starsSeed, mode }) {
   const group = useRef();
+  const modelWrapperRef = useRef();
   const { camera, gl } = useThree();
 
   const { scene } = useGLTF("/tamagotchi_model.glb");
@@ -73,13 +88,16 @@ export default function Scene({ starsSeed, mode }) {
 
   const screenPosition = isFullscreen
     ? [0, 0.1, 0.2] // 🔥 better centered visually
-    : [0, 0.563, 0.05];
+    : [0, 0.568, 0.05];
 
   const screenRotation = [0, 0, 0];
 
+  const modelWrapperPosition = [0, 0.1, 0];
+  const modelWrapperScale = 1.75;
+
   const screenScale = isFullscreen
     ? 5 // 🔥 bigger + more visible
-    : 2.15;
+    : 2.05;
 
   // upload hooks
   useEffect(() => {
@@ -253,19 +271,15 @@ export default function Scene({ starsSeed, mode }) {
       mat.needsUpdate = true;
     });
 
-    if (!group.current.userData.initialized) {
-      const box = getMeshBounds(scene);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
+    const box = getMeshBounds(scene);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
 
-      group.current.position.set(-center.x, -center.y, -center.z);
-      const maxDim = Math.max(size.x, size.y, size.z) || 1;
-      const scale = 1.5 / maxDim;
-      group.current.userData.baseScale = scale;
-      group.current.scale.setScalar(scale);
-
-      group.current.userData.initialized = true;
-    }
+    group.current.position.set(-center.x, -center.y, -center.z);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const scale = 1.5 / maxDim;
+    group.current.userData.baseScale = scale;
+    group.current.scale.setScalar(scale);
 
     camera.position.set(0, 0.1, 3);
     camera.lookAt(0, 0, 0);
@@ -282,10 +296,8 @@ export default function Scene({ starsSeed, mode }) {
   useFrame((state, delta) => {
     if (!group.current) return;
 
-    const t = state.clock.elapsedTime;
     const base = group.current.userData.baseScale || 1;
-    const breath = 1 + Math.sin(t * 2) * 0.015;
-    group.current.scale.setScalar(base * breath);
+    group.current.scale.setScalar(base);
 
     // 🎯 FIX ORBIT (smooth + correct direction)
     const damping = 5;
@@ -350,6 +362,11 @@ export default function Scene({ starsSeed, mode }) {
         );
       }
     }
+
+    if (modelWrapperRef.current) {
+      modelWrapperRef.current.position.set(...modelWrapperPosition);
+      modelWrapperRef.current.scale.setScalar(modelWrapperScale);
+    }
   });
 
   return (
@@ -358,12 +375,17 @@ export default function Scene({ starsSeed, mode }) {
         <>
           <ambientLight intensity={1.2} />
           <directionalLight position={[3, 5, 4]} intensity={1.5} />
-          <Environment files="/hdri.exr" background={false} blur={0.2} />
-          <StarsField color={starsColor} seed={starsSeed} />
+          {!isFullscreen ? (
+            <>
+              <Environment files="/hdri.exr" background={false} blur={0.2} />
+              <StarsField color={starsColor} seed={starsSeed} />
+            </>
+          ) : null}
         </>
       )}
 
-      <group ref={group}>
+      <group ref={modelWrapperRef} position={modelWrapperPosition} scale={[modelWrapperScale, modelWrapperScale, modelWrapperScale]}>
+        <group ref={group}>
         <primitive object={scene} visible={!debugUI && mode !== "fullscreen"} />
 
         {!debugUI && !isFullscreen && (
@@ -380,138 +402,35 @@ export default function Scene({ starsSeed, mode }) {
               distanceFactor={0.4}
               zIndexRange={[1000, 0]}
               style={{
-                width: "200px",
-                height: "200px",
+                width: "220px",
+                height: "220px",
                 pointerEvents: "auto",
                 overflow: "hidden",
-                borderRadius: "28px",
-                clipPath: "inset(0 round 28px)",
+                borderRadius: "35px",
+                clipPath: "inset(0 round 35px)",
                 background: "transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <PetScreen />
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  transformOrigin: "center center",
+                }}
+              >
+                <PetScreen />
+              </div>
             </Html>
           </group>
         )}
 
         {/* --- END UI BUTTONS GROUP --- */}
 
+        </group>
       </group>
-      {/* Fullscreen Html is now outside the 3D group and attached to document.body */}
-      {!debugUI && isFullscreen && (
-        <Html
-          portal={document.body}
-          prepend
-          style={{
-            position: "fixed",
-            top: "27%", // Tweak fullscreen vertical placement here.
-            left: "50%",
-            transform: "translate(-50%, -62%)",
-            pointerEvents: "auto",
-            zIndex: 999999
-          }}
-        >
-          {/* Tweak fullscreen shell height here. */}
-          <div style={{
-            width: "clamp(320px, 78vw, 860px)", // Tweak fullscreen shell width here.
-            padding: "clamp(6px, 0.2vw, 12px)", // 🔥 breathing space on small screens
-            height: "clamp(360px, 60vh, 720px)", // Tweak fullscreen shell height here.
-            borderRadius: "24px",
-            background: "rgba(255, 255, 255, 0.08)", // 🔥 glass base
-            backdropFilter: "blur(20px)", // 🔥 glass blur
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.15)", // subtle edge
-            boxShadow: "0 20px 80px rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            overflow: "hidden",
-            transform: `scale(${fsOpen ? 1 : 0.85})`,
-            transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)",
-            willChange: "transform"
-          }}>
-            {/* 🔥 glass overlay ABOVE screen */}
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              background: "url('/src/hud/Overlay_Glass.webp') center / cover no-repeat",
-              opacity: 1,
-              pointerEvents: "none",
-              zIndex: 100
-            }} />
-
-            <div style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "16px",
-              overflow: "hidden",
-              background: "black", // 🔥 solid black screen base
-              position: "relative",
-              zIndex: 1
-            }}>
-            <div style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between"
-            }}>
-
-              {/* GAME SCREEN */}
-              <div style={{
-                flex: 1,
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                isolation: "isolate"
-              }}>
-                <div style={{
-                  position: "relative",
-                  zIndex: 1,
-                  width: "100%",
-                  height: "100%"
-                }}>
-                  <PetScreen />
-                </div>
-
-                {/* JAUGES OVERLAY FULL WIDTH */}
-                <div style={{
-  position: "absolute",
-  top: "8px",
-  left: 0,
-  width: "100%",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-  pointerEvents: "auto",
-  zIndex: 20
-}}>
-  <div style={{
-    width: "min(340px, calc(100% - 24px))", // tweak largeur réelle du bloc de jauges ici
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-start",
-    margin: "0 auto",
-  }}>
-    <JaugesPanel embedded />
-  </div>
-</div>
-              </div>
-
-
-            </div>
-            </div>
-          </div>
-        </Html>
-      )}
       {/* UI components removed: Scene is now 3D-only */}
       {debugUI && (
         <Html fullscreen style={{ pointerEvents: "none", zIndex: 9999 }}>

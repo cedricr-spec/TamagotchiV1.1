@@ -1,0 +1,116 @@
+[
+  {
+    "id": "quest_collect_wood",
+    "chapter": 1,
+    "order": 1,
+    "title": "Gather Wood",
+    "shortTitle": "Wood",
+    "description": "Collect enough wood to start your first tools.",
+    "iconItemId": "wood",
+    "prerequisites": [],
+    "objectives": [
+      { "type": "collect_item", "itemId": "wood", "quantity": 3 }
+    ],
+    "rewards": [
+      { "type": "item", "value": "woodstick", "amount": 1 }
+    ],
+    "repeatable": false,
+    "hidden": false,
+    "category": "gathering"
+  },
+  {
+    "id": "quest_craft_stick",
+    "chapter": 1,
+    "order": 2,
+    "title": "Craft a Stick",
+    "shortTitle": "Stick",
+    "description": "Turn gathered wood into a basic stick.",
+    "iconItemId": "woodstick",
+    "prerequisites": ["quest_collect_wood"],
+    "objectives": [
+      { "type": "craft_item", "itemId": "woodstick", "quantity": 1 }
+    ],
+    "rewards": [
+      { "type": "inventory_capacity", "value": "inventory_slots", "amount": 4 }
+    ],
+    "repeatable": false,
+    "hidden": false,
+    "category": "crafting"
+  },
+  {
+    "id": "quest_collect_stone",
+    "chapter": 1,
+    "order": 3,
+    "title": "Gather Stone",
+    "shortTitle": "Stone",
+    "description": "Collect a few stones for stronger tools.",
+    "iconItemId": "stone",
+    "prerequisites": ["quest_craft_stick"],
+    "objectives": [
+      { "type": "collect_item", "itemId": "stone", "quantity": 3 }
+    ],
+    "rewards": [
+      { "type": "item", "value": "stone", "amount": 1 }
+    ],
+    "repeatable": false,
+    "hidden": false,
+    "category": "gathering"
+  },
+  {
+    "id": "quest_craft_pickaxe",
+    "chapter": 1,
+    "order": 4,
+    "title": "Craft a Pickaxe",
+    "shortTitle": "Pickaxe",
+    "description": "Craft a pickaxe so you can keep mining forward.",
+    "iconItemId": "pickaxe",
+    "prerequisites": ["quest_collect_stone"],
+    "objectives": [
+      { "type": "craft_item", "itemId": "pickaxe", "quantity": 1 }
+    ],
+    "rewards": [
+      { "type": "inventory_capacity", "value": "inventory_slots", "amount": 4 }
+    ],
+    "repeatable": false,
+    "hidden": false,
+    "category": "crafting"
+  },
+  {
+    "id": "quest_craft_axe",
+    "chapter": 1,
+    "order": 5,
+    "title": "Craft an Axe",
+    "shortTitle": "Axe",
+    "description": "Finish the first tool chain with a basic axe.",
+    "iconItemId": "axe",
+    "prerequisites": ["quest_craft_pickaxe"],
+    "objectives": [
+      { "type": "craft_item", "itemId": "axe", "quantity": 1 }
+    ],
+    "rewards": [
+      { "type": "inventory_capacity", "value": "inventory_slots", "amount": 8 }
+    ],
+    "repeatable": false,
+    "hidden": false,
+    "category": "crafting"
+  },
+  {
+    "id": "quest_unlock_character_2",
+    "chapter": 1,
+    "order": 6,
+    "title": "Expert Woodcutter",
+    "shortTitle": "Expert",
+    "description": "Prove your skills by gathering more wood and unlock a new companion.",
+    "iconItemId": "wood",
+    "prerequisites": ["quest_craft_axe"],
+    "objectives": [
+      { "type": "collect_item", "itemId": "wood", "quantity": 5 }
+    ],
+    "rewards": [
+      { "type": "unlock_character", "value": "character_2", "amount": 1 }
+    ],
+    "repeatable": false,
+    "hidden": false,
+    "category": "story"
+  }
+]

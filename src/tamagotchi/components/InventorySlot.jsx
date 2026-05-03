@@ -11,6 +11,7 @@ export default function InventorySlot({
   isDisabled = false,
   onPointerDown,
   onClick,
+  children,
 }) {
   const hasItem = Boolean(stack?.itemId)
   const isResult = slotType === "result"
@@ -39,7 +40,7 @@ export default function InventorySlot({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        position: "absolute",
+        position: style?.position || "absolute",
         cursor: hasItem && !isDisabled ? "grab" : isResult ? "pointer" : "default",
         opacity: isDragSource ? 0.35 : 1,
         transition: "box-shadow 0.14s ease, background 0.14s ease, opacity 0.14s ease",
@@ -84,6 +85,8 @@ export default function InventorySlot({
           )}
         </>
       )}
+
+      {children}
     </button>
   )
 }

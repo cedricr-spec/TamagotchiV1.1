@@ -1,46 +1,95 @@
-import React from "react";
+import React, { useEffect, useMemo, useRef, memo } from "react";
 import Entity from "./Entity";
 import { useEntityStore } from "../store/entitySlice";
 import { useWorldStore } from "../store/worldSlice";
 
-export default function EntityLayer({ viewport = { width: 0, height: 0 } }) {
+const DEFAULT_VIEWPORT_FRAME = Object.freeze({
+  left: 0,
+  top: 0,
+  width: 500,
+  height: 500,
+});
+
+const WORLD_LAYER_STYLE = {
+  position: "absolute",
+  left: 0,
+  top: 0,
+  pointerEvents: "none",
+};
+
+function createWorldTransform(viewportFrame, worldOffset = { x: 0, y: 0 }) {
+  return `translate3d(${Math.round((viewportFrame.width || 0) * 0.5 + (worldOffset?.x || 0))}px, ${Math.round(
+    (viewportFrame.height || 0) * 0.5 + (worldOffset?.y || 0)
+  )}px, 0)`;
+}
+
+function applyWorldTransform(node, viewportFrame, worldOffset) {
+  if (!node) return;
+
+  const nextTransform = createWorldTransform(viewportFrame, worldOffset);
+  if (node.style.transform !== nextTransform) {
+    node.style.transform = nextTransform;
+  }
+  if (node.style.willChange !== "transform") {
+    node.style.willChange = "transform";
+  }
+}
+
+export default function EntityLayer({ viewportFrame = DEFAULT_VIEWPORT_FRAME }) {
   const entities = useEntityStore((state) => state.entities);
-  const worldOffset = useWorldStore((state) => state.worldOffset);
+  const worldLayerRef = useRef(null);
+
+  useEffect(() => {
+    const initialOffset = useWorldStore.getState().worldOffset || { x: 0, y: 0 };
+    applyWorldTransform(worldLayerRef.current, viewportFrame, initialOffset);
+  }, [viewportFrame.height, viewportFrame.width]);
+
+  useEffect(() => {
+    const unsubscribe = useWorldStore.subscribe((state, previousState) => {
+      if (state.worldOffset === previousState.worldOffset) {
+        return;
+      }
+
+      applyWorldTransform(worldLayerRef.current, viewportFrame, state.worldOffset);
+    });
+
+    return () => unsubscribe();
+  }, [viewportFrame.height, viewportFrame.width]);
+
+  const frameStyle = useMemo(
+    () => ({
+      position: "absolute",
+      left: Math.round(viewportFrame.left || 0),
+      top: Math.round(viewportFrame.top || 0),
+      width: Math.max(1, Math.round(viewportFrame.width || DEFAULT_VIEWPORT_FRAME.width)),
+      height: Math.max(1, Math.round(viewportFrame.height || DEFAULT_VIEWPORT_FRAME.height)),
+      overflow: "hidden",
+      pointerEvents: "none",
+      // z=3: sits between WorldAtlasLayer back (z=0) and front (z=5).
+      // Requires worldFrameStyle to NOT create a stacking context (no clipPath).
+      zIndex: 3,
+    }),
+    [viewportFrame.height, viewportFrame.left, viewportFrame.top, viewportFrame.width]
+  );
 
   return (
-    <>
-      {/* ⚠️ CRITICAL: Do NOT modify or remove `data-entity-layer`
-         This container is used as the reference for all entity positioning and interactions.
-         Changing it will break pickup, visibility, and world alignment. */}
+    <div style={frameStyle}>
       <div
+        ref={worldLayerRef}
         data-entity-layer
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          pointerEvents: "none",
-          transform: "translate(-50%, -50%)",
-        }}
+        style={WORLD_LAYER_STYLE}
       >
         {entities
           .filter((entity) => entity.active)
-          .map((entity) => {
-            const safeEntity = {
-              type: "food",
-              spriteKey: entity?.itemKey ? undefined : "apple",
-              ...entity,
-            };
-
-            return (
-              <Entity
-                key={entity.id}
-                entity={safeEntity}
-                x={entity.x + (worldOffset?.x || 0)}
-                y={entity.y + (worldOffset?.y || 0)}
-              />
-            );
-          })}
+          .map((entity) => (
+            <Entity
+              key={entity.id}
+              entity={entity}
+              x={entity.x}
+              y={entity.y}
+            />
+          ))}
       </div>
-    </>
+    </div>
   );
 }

@@ -149,13 +149,9 @@ export default function PetControls() {
   const keyToDirection = useMemo(
     () => ({
       arrowup: "up",
-      w: "up",
       arrowdown: "down",
-      s: "down",
       arrowleft: "left",
-      a: "left",
       arrowright: "right",
-      d: "right",
     }),
     []
   );
@@ -211,9 +207,7 @@ export default function PetControls() {
       const key = e.key.toLowerCase();
 
       if (
-        ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
-          key
-        )
+        ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)
       ) {
         e.preventDefault();
 
@@ -230,9 +224,7 @@ export default function PetControls() {
       const key = e.key.toLowerCase();
 
       if (
-        ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(
-          key
-        )
+        ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)
       ) {
         const direction = keyToDirection[key];
 

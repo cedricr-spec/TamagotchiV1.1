@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useEntityStore } from "../store/entitySlice";
 import { useWorldStore } from "../store/worldSlice";
 import { useInventoryStore } from "../store/useInventoryStore";
+import { useQuestStore } from "../store/useQuestStore";
 import { ENTITY_TYPES } from "../config/entityTypes";
 
 const PICKUP_RADIUS_BONUS = 18;
@@ -108,6 +109,15 @@ export default function InteractionSystem() {
       if (applyEffects && hasEffectValue(pickupEffects)) {
         applyEffects(pickupEffects);
       }
+
+      collected.forEach((entity) => {
+        if (entity.reward !== "inventory_item" || !entity.itemKey) return;
+
+        const quantity = Math.max(0, Math.floor(entity.rewardAmount ?? 1));
+        if (quantity <= 0) return;
+
+        useQuestStore.getState().recordCollectedItem(entity.itemKey, quantity);
+      });
 
       const ids = new Set(collected.map((e) => e.id));
 

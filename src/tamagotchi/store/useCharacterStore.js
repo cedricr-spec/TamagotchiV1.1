@@ -1,5 +1,13 @@
 import { create } from "zustand"
 import { CHARACTER_ROSTER_BY_ID, DEFAULT_CHARACTER_ID } from "../config/characterRoster"
+
+export const INITIAL_UNLOCKED_CHARACTER_IDS = [
+  "basic_character",
+  "spring_4",
+  "main_character",
+  "character_1",
+  "gato",
+]
 import {
   DEFAULT_PERSISTENT_STATE,
   SHARED_ANIMATION_MAP,
@@ -17,10 +25,19 @@ export const useCharacterStore = create((set, get) => ({
   previousPersistentState: DEFAULT_PERSISTENT_STATE,
   transientState: null,
   movementActive: false,
+  unlockedCharacterIds: INITIAL_UNLOCKED_CHARACTER_IDS,
 
   setCharacter: (id) => {
     if (!CHARACTER_ROSTER_BY_ID[id]) return
     set({ activeCharacterId: id })
+  },
+
+  unlockCharacter: (id) => {
+    if (!CHARACTER_ROSTER_BY_ID[id]) return
+    set((state) => {
+      if (state.unlockedCharacterIds.includes(id)) return state
+      return { unlockedCharacterIds: [...state.unlockedCharacterIds, id] }
+    })
   },
 
   setPersistentState: (state) =>

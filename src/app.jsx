@@ -3,22 +3,41 @@ import { useState, useEffect } from "react"; // 👈 AJOUT
 import { Canvas } from "@react-three/fiber";
 import Scene from "./scene.jsx";
 import CustomizerPanel from "./components/CustomizerPanel";
+import CharacterMenu from "./components/CharacterMenu";
+import PetScreen from "./tamagotchi/components/PetScreen";
 import { usePetStore } from "./tamagotchi/store/usePetstore";
 import JaugesPanel from "./tamagotchi/components/JaugesPanel";
 import GaugeV2 from "./tamagotchi/components/GaugeV2";
 import LineMenu from "./tamagotchi/components/Line_Menu";
 import PetControls from "./tamagotchi/components/PetControls";
 import InventoryPanel from "./tamagotchi/components/InventoryPanel";
+import QuestPanel from "./tamagotchi/components/QuestPanel";
+import ActiveQuestTracker from "./tamagotchi/components/ActiveQuestTracker";
+import InventoryNoticeToast from "./tamagotchi/components/InventoryNoticeToast";
+import WorldInteractionSystem from "./tamagotchi/systems/WorldInteractionSystem";
+import WorldInteractionToast from "./tamagotchi/components/WorldInteractionToast";
+import {
+  DEV_START_FULLSCREEN_UI,
+  DEV_START_WORLD_DEBUG,
+} from "./tamagotchi/config/worldStreamingConfig";
+import {
+  DEFAULT_WORLD_DEBUG_FLAGS,
+  useWorldDebugStore,
+} from "./tamagotchi/store/worldDebugStore";
 import TintedCtaButton from "./components/TintedCtaButton";
 import mediumCta from "./hud/CTAs/CTA_Medium_8BIT.webp";
 import mediumCtaPressed from "./hud/CTAs/CTA_Medium_8BIT_Pressed.webp";
 
 export default function App() {
-  const [open, setOpen] = useState(false) // 👈 AJOUT
+  const [open, setOpen] = useState(false)
+  const [characterMenuOpen, setCharacterMenuOpen] = useState(false)
   const [starsColor, setStarsColor] = useState("#ffffff")
   const [starsSeed, setStarsSeed] = useState(0)
-  const [mode, setMode] = useState("device"); // "device" | "fullscreen"
+  const [mode, setMode] = useState(
+    DEV_START_FULLSCREEN_UI ? "fullscreen" : "device"
+  ); // "device" | "fullscreen"
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [questOpen, setQuestOpen] = useState(false)
 
   function lightenColor(hex, amount = 0.3) {
     if (!hex) return "#ffffff";
@@ -44,6 +63,23 @@ export default function App() {
   useEffect(() => {
     usePetStore.getState().startGame();
 
+    if (DEV_START_WORLD_DEBUG) {
+      useWorldDebugStore.getState().setFlags({
+        ...DEFAULT_WORLD_DEBUG_FLAGS,
+        showWorldDebugOverlay: true,
+        showWorldDecorDebug: true,
+        showWorldDecorBoundsDebug: true,
+        showWorldItemBoundsDebug: true,
+        showWorldCollisionBoundsDebug: true,
+        showWorldDecorLabelsDebug: false,
+        showWorldSpawnRadiusDebug: true,
+        showViewportCullingDebug: true,
+        showSpawnDespawnBufferDebug: true,
+        showWorldDecorTweakPanel: true,
+        showWaterCollisionDebug: true,
+      });
+    }
+
     // 🔥 fix layout shift / vertical offset
     document.body.style.margin = "0";
     document.body.style.overflow = "hidden";
@@ -55,8 +91,26 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    document.body.dataset.uiMode = mode;
+    document.documentElement.dataset.uiMode = mode;
+
+    return () => {
+      delete document.body.dataset.uiMode;
+      delete document.documentElement.dataset.uiMode;
+    };
+  }, [mode]);
+
   return (
-  <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
+  <div
+    style={{
+      position: "relative",
+      width: "100vw",
+      height: "100vh",
+      overflow: "hidden",
+      background: mode === "fullscreen" ? "#000000" : "transparent",
+    }}
+  >
     {debugUI && (
       <div
         style={{
@@ -107,53 +161,35 @@ export default function App() {
           }}
         />
       )}
+      {/* STAT GAUGES — top-left, always visible in both modes */}
       <div
         style={{
           position: "fixed",
           top: "16px",
-          left: "20px",
+          left: "16px",
           zIndex: 10000,
-          pointerEvents: "auto"
+          pointerEvents: "none",
+          maxWidth: "calc(100vw - 32px)",
         }}
       >
-        <TintedCtaButton
-          ariaLabel="Switch UI"
-          defaultSrc={mediumCta}
-          pressedSrc={mediumCtaPressed}
-          tintColor={modelColor || "#8f8f8f"}
-          label="Switch UI"
-          labelClassName="hud-ui-text hud-ui-text--cta"
-          onClick={() => setMode(mode === "device" ? "fullscreen" : "device")}
-          width="156px"
-          height="52px"
-        />
+        <JaugesPanel />
       </div>
 
-      {mode !== "fullscreen" && (
+      {/* SWITCH UI — bottom-left (deleted -> is now in CustomizerPanel pour un ptit gain de place en mobile*/}
+
+      <ActiveQuestTracker />
+
+      {mode === "fullscreen" && (
         <div
           style={{
             position: "fixed",
-            top: "10vh",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "90vw",          // 👈 allow more horizontal space
-            maxWidth: "1200px",     // 👈 optional cap
-            display: "flex",
-            justifyContent: "center",
+            inset: 0,
+            zIndex: 5,
             pointerEvents: "auto",
-            zIndex: 80
+            overflow: "hidden",
           }}
         >
-          {debugUI && (
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              background: getColor("overlay"),
-              pointerEvents: "none",
-              zIndex: 0
-            }} />
-          )}
-          <JaugesPanel />
+          <PetScreen />
         </div>
       )}
 
@@ -184,6 +220,7 @@ export default function App() {
 
       {/* LINE MENU */}
       <div
+        data-inventory-toggle
         style={{
           position: "fixed",
           bottom: "28px",
@@ -207,8 +244,27 @@ export default function App() {
           }} />
         )}
         <LineMenu
-          onInventoryToggle={() => setInventoryOpen((prev) => !prev)}
+          onInventoryToggle={(event) => {
+            event?.stopPropagation?.()
+            setInventoryOpen((prev) => {
+              const next = !prev
+              if (next) {
+                setQuestOpen(false)
+              }
+              return next
+            })
+          }}
           inventoryOpen={inventoryOpen}
+          onQuestToggle={() => {
+            setQuestOpen((prev) => {
+              const next = !prev
+              if (next) {
+                setInventoryOpen(false)
+              }
+              return next
+            })
+          }}
+          questOpen={questOpen}
         />
       </div>
       <div style={{ position: "relative", pointerEvents: "auto" }}>
@@ -221,12 +277,27 @@ export default function App() {
             zIndex: 0
           }} />
         )}
-      <InventoryPanel open={inventoryOpen} />
+      <InventoryPanel
+        open={inventoryOpen}
+        onClose={() => setInventoryOpen(false)}
+      />
+      <QuestPanel
+        open={questOpen}
+        onClose={() => setQuestOpen(false)}
+      />
+      <WorldInteractionSystem />
+      <InventoryNoticeToast />
+      <WorldInteractionToast />
       <CustomizerPanel
         open={open}
         onRandomizeStars={(seed) => setStarsSeed(seed)}
         onToggle={() => setOpen((prev) => !prev)}
         mode={mode}
+        onSwitchMode={() => setMode(mode === "device" ? "fullscreen" : "device")}
+      />
+      <CharacterMenu
+        open={characterMenuOpen}
+        onToggle={() => setCharacterMenuOpen((prev) => !prev)}
       />
       </div>
     </div>

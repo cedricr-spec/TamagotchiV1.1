@@ -1,11 +1,16 @@
-import React, { useMemo } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import PetSprite from "../components/PetSprite"
 import { resolvePetAnimationState } from "../lib/petAnimationResolver"
+import { getPhaserDebugFlags, subscribePhaserDebugFlags } from "../phaser/phaserDebugFlags"
 import { useCharacterStore } from "../store/useCharacterStore"
 import { usePetStore } from "../store/usePetstore"
 
 export default function TamagotchiUI() {
   const debugUI = usePetStore((state) => state.debugUI)
+  const [phaserFlags, setPhaserFlags] = useState(getPhaserDebugFlags)
+
+  useEffect(() => subscribePhaserDebugFlags(setPhaserFlags), [])
+
   const activeCharacterId = useCharacterStore((state) => state.activeCharacterId)
   const persistentState = useCharacterStore((state) => state.persistentState)
   const transientState = useCharacterStore((state) => state.transientState)
@@ -35,7 +40,7 @@ export default function TamagotchiUI() {
         pointerEvents: "none",
       }}
     >
-      <PetSprite />
+      {!phaserFlags.showPhaserPlayerPreview && <PetSprite />}
 
       {debugUI && (
         <div

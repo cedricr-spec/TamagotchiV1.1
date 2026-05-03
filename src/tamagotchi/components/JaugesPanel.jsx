@@ -1,8 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { usePetStore } from "../store/usePetstore";
 import GaugeV2 from "./GaugeV2";
 
+const MOBILE_GAUGES_QUERY = "(max-width: 800px)";
+
+function useIsMobileGaugesLayout() {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(MOBILE_GAUGES_QUERY).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia(MOBILE_GAUGES_QUERY);
+    const update = () => setIsMobile(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener?.("change", update);
+
+    return () => {
+      mediaQuery.removeEventListener?.("change", update);
+    };
+  }, []);
+
+  return isMobile;
+}
+
 export default function JaugesPanel({ embedded = false, ...props }) {
+  const isMobileLayout = useIsMobileGaugesLayout();
+
   const hunger = usePetStore((s) => s.hunger);
   const energy = usePetStore((s) => s.energy);
   const happiness = usePetStore((s) => s.happiness);
@@ -20,26 +47,34 @@ export default function JaugesPanel({ embedded = false, ...props }) {
       data-hud="jauges"
       {...props}
       style={{
-        position: "relative",
-        inset: "auto",
+        position: isMobileLayout ? "absolute" : "relative",
+        top: isMobileLayout ? "12px" : undefined,
+        left: isMobileLayout ? "12px" : undefined,
+        right: isMobileLayout ? "auto" : undefined,
+        bottom: isMobileLayout ? "auto" : undefined,
+        inset: isMobileLayout ? undefined : "auto",
         display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
+        justifyContent: isMobileLayout ? "flex-start" : "center",
+        alignItems: isMobileLayout ? "flex-start" : "center",
         pointerEvents: embedded ? "auto" : "none",
         zIndex: embedded ? "auto" : 20,
-        width: embedded ? "100%" : undefined,
-        height: embedded ? "100%" : undefined,
+        width: embedded && !isMobileLayout ? "100%" : undefined,
+        height: embedded && !isMobileLayout ? "100%" : undefined,
       }}
     >
       <div
         style={{
-          width: embedded ? "min(100%, 520px)" : "fit-content",
+          width: isMobileLayout
+            ? "fit-content"
+            : embedded
+              ? "min(100%, 520px)"
+              : "fit-content",
           display: "flex",
-          flexDirection: "row",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "8px",
+          flexDirection: isMobileLayout ? "column" : "row",
+          flexWrap: isMobileLayout ? "nowrap" : "wrap",
+          justifyContent: isMobileLayout ? "flex-start" : "center",
+          alignItems: isMobileLayout ? "flex-start" : "center",
+          gap: isMobileLayout ? "6px" : "8px",
           marginBottom: 0,
         }}
       >

@@ -10,7 +10,7 @@ import ItemVisual from "./ItemVisual";
 const INVENTORY_ICON_IDLE_OFFSET_Y = -2;
 const MENU_BUTTON_SIZE = 48;
 
-export default function LineMenu({ onHover, onInventoryToggle, inventoryOpen = false }) {
+export default function LineMenu({ onHover, onInventoryToggle, inventoryOpen = false, onQuestToggle, questOpen = false }) {
   const applyEffects = useStore((s) => s.applyEffects);
   const theme = useStore((s) => s.theme);
   const color = theme?.modelColor || "#8f8f8f";
@@ -239,6 +239,43 @@ export default function LineMenu({ onHover, onInventoryToggle, inventoryOpen = f
         ),
         extraStyle: {
           marginLeft: "10px",
+        },
+      })}
+
+      {renderMenuButton({
+        buttonKey: "quest",
+        onClick: () => {
+          onHover && onHover(null);
+          onQuestToggle?.();
+        },
+        content: (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              zIndex: 1,
+              opacity: questOpen ? 0.92 : 1,
+            }}
+          >
+            <span
+              style={{
+                fontSize: "20px",
+                lineHeight: 1,
+                pointerEvents: "none",
+                transform: `translateY(${pressedKey === "quest" ? 0 : INVENTORY_ICON_IDLE_OFFSET_Y}px)`,
+                display: "block",
+              }}
+            >
+              📜
+            </span>
+          </div>
+        ),
+        extraStyle: {
+          marginLeft: "4px",
         },
       })}
     </div>

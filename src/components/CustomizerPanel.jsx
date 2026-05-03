@@ -1,22 +1,35 @@
 import React, { useState, useEffect, useRef } from "react"
 import PanelItem from "./PanelItem"
-import IconButton from "./IconButton"
-import CharacterPicker from "./CharacterPicker"
 import TintedCtaButton from "./TintedCtaButton"
 import { HexColorPicker } from "react-colorful"
 import { usePetStore } from "../tamagotchi/store/usePetstore"
 import { useCharacterStore } from "../tamagotchi/store/useCharacterStore"
+import { useWorldStore } from "../tamagotchi/store/worldSlice"
+import { WORLD_SEASON_IDS } from "../tamagotchi/config/worldSeasonConfig"
 
 import menuButton from "../hud/CTAs/CTA_Small_8BIT_Menu.webp"
 import menuButtonPressed from "../hud/CTAs/CTA_Small_8BIT_Menu_Pressed.webp"
 import closeButton from "../hud/CTAs/CTA_Small_8BIT_Close.webp"
 import closeButtonPressed from "../hud/CTAs/CTA_Small_8BIT_Close_Pressed.webp"
+import undoButton from "../hud/CTAs/CTA_Small_8BIT_Undo.webp"
+import undoButtonPressed from "../hud/CTAs/CTA_Small_8BIT_Undo_Pressed.webp"
+import redoButton from "../hud/CTAs/CTA_Small_8BIT_Redo.webp"
+import redoButtonPressed from "../hud/CTAs/CTA_Small_8BIT_Redo_Pressed.webp"
+import scrollbarThumb from "../hud/CTAs/Scrollbar_8BIT.webp"
+import scrollbarThumbHover from "../hud/CTAs/Scrollbar_8BIT_Hover.webp"
 import mediumCta from "../hud/CTAs/CTA_Medium_8BIT.webp"
 import mediumCtaPressed from "../hud/CTAs/CTA_Medium_8BIT_Pressed.webp"
 
 const TOGGLE_BUTTON_SIZE = 52
 const PANEL_SCROLL_BOTTOM_SPACE = "5vh" // Tweak bottom scroll space here.
 const PANEL_CTA_HEIGHT = "52px"
+const CUSTOMIZER_CONTENT_WIDTH = "min(620px, calc(100vw - 56px))"
+const CUSTOMIZER_NARROW_WIDTH = "min(520px, calc(100vw - 72px))"
+const CUSTOM_SCROLLBAR_WIDTH = TOGGLE_BUTTON_SIZE
+const CUSTOM_SCROLLBAR_RIGHT = 18
+const CUSTOM_SCROLLBAR_TOP = 86
+const CUSTOM_SCROLLBAR_BOTTOM = 26
+const CUSTOM_SCROLLBAR_MIN_THUMB_HEIGHT = 54
 const COLOR_PICKER_FRAME_STYLE = {
   width: "100%",
   maxWidth: "250px",
@@ -34,7 +47,7 @@ const COLOR_PICKER_SECTION_STYLE = {
   width: "100%",
   display: "flex",
   flexDirection: "column",
-  alignItems: "stretch",
+  alignItems: "center",
   gap: "12px",
 }
 const COLOR_PICKER_STYLE = {
@@ -72,12 +85,18 @@ function PanelActionButton({ label, tintColor, onClick, disabled = false, style 
   )
 }
 
-export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode }) {
+export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode, onSwitchMode }) {
   const [active, setActive] = useState(null)
   const [selectedPreset, setSelectedPreset] = useState(null)
   const [isPresetOpen, setIsPresetOpen] = useState(false)
   const panelRef = useRef()
   const toggleButtonRef = useRef()
+  const scrollbarDragRef = useRef({
+    active: false,
+    pointerId: null,
+    startY: 0,
+    startScrollTop: 0,
+  })
   const [color, setColor] = useState("#4fd1ff")
   const petColor = usePetStore((s) => s.theme.petColor)
   const modelColor = usePetStore((s) => s.theme.modelColor)
@@ -87,6 +106,8 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
   const setCharacter = useCharacterStore((s) => s.setCharacter)
   const debugUI = usePetStore((s) => s.debugUI)
   const theme = usePetStore((s) => s.theme)
+  const currentSeason = useWorldStore((s) => s.currentWorldTheme)
+  const setWorldTheme = useWorldStore((s) => s.setWorldTheme)
   const controlColor = theme?.modelColor || "#8f8f8f"
   const [history, setHistory] = useState({
     past: [],
@@ -103,8 +124,80 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
   const [starsSaved, setStarsSaved] = useState("#ffffff")
   const [modelTemp, setModelTemp] = useState(modelColor)
   const [modelSaved, setModelSaved] = useState(modelColor)
+  const [scrollbarState, setScrollbarState] = useState({
+    scrollTop: 0,
+    scrollHeight: 1,
+    clientHeight: 1,
+  })
+  const [scrollbarHover, setScrollbarHover] = useState(false)
 
   const isModelDirty = modelTemp !== modelSaved
+  const isFullscreen = mode === "fullscreen"
+  const scrollbarTrackHeight = `calc(100vh - ${CUSTOM_SCROLLBAR_TOP + CUSTOM_SCROLLBAR_BOTTOM}px)`
+  const canScroll = scrollbarState.scrollHeight > scrollbarState.clientHeight + 1
+  const scrollbarThumbHeight = canScroll
+    ? Math.max(
+        CUSTOM_SCROLLBAR_MIN_THUMB_HEIGHT,
+        (scrollbarState.clientHeight / scrollbarState.scrollHeight) *
+          Math.max(1, scrollbarState.clientHeight - CUSTOM_SCROLLBAR_TOP - CUSTOM_SCROLLBAR_BOTTOM)
+      )
+    : CUSTOM_SCROLLBAR_MIN_THUMB_HEIGHT
+  const scrollbarMaxTravel = Math.max(
+    0,
+    scrollbarState.clientHeight - CUSTOM_SCROLLBAR_TOP - CUSTOM_SCROLLBAR_BOTTOM - scrollbarThumbHeight
+  )
+  const scrollbarProgress = canScroll
+    ? scrollbarState.scrollTop / (scrollbarState.scrollHeight - scrollbarState.clientHeight)
+    : 0
+  const scrollbarThumbTop = CUSTOM_SCROLLBAR_TOP + scrollbarMaxTravel * scrollbarProgress
+
+  const handleScrollbarPointerDown = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const panel = panelRef.current
+    if (!panel) return
+
+    scrollbarDragRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startScrollTop: panel.scrollTop,
+    }
+
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  const handleScrollbarPointerMove = (event) => {
+    if (!scrollbarDragRef.current.active) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const panel = panelRef.current
+    if (!panel || scrollbarMaxTravel <= 0) return
+
+    const deltaY = event.clientY - scrollbarDragRef.current.startY
+    const maxScrollTop = panel.scrollHeight - panel.clientHeight
+    const nextScrollTop =
+      scrollbarDragRef.current.startScrollTop + (deltaY / scrollbarMaxTravel) * maxScrollTop
+
+    panel.scrollTop = Math.max(0, Math.min(maxScrollTop, nextScrollTop))
+  }
+
+  const handleScrollbarPointerUp = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    scrollbarDragRef.current = {
+      active: false,
+      pointerId: null,
+      startY: 0,
+      startScrollTop: 0,
+    }
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+  }
 
   const presets = [
     { name: "LAVA", background: "#ff5a1f", starsColor: "#ffb347", petColor: "#ff9a66", modelColor: "#cc2e00" },
@@ -181,6 +274,28 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
   }, [open, onToggle])
 
   useEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return undefined
+
+    const updateScrollbarState = () => {
+      setScrollbarState({
+        scrollTop: panel.scrollTop,
+        scrollHeight: panel.scrollHeight,
+        clientHeight: panel.clientHeight,
+      })
+    }
+
+    updateScrollbarState()
+    panel.addEventListener("scroll", updateScrollbarState, { passive: true })
+    window.addEventListener("resize", updateScrollbarState)
+
+    return () => {
+      panel.removeEventListener("scroll", updateScrollbarState)
+      window.removeEventListener("resize", updateScrollbarState)
+    }
+  }, [open, active, isPresetOpen])
+
+  useEffect(() => {
     const nextBackground = history.present.color || "#4fd1ff"
     setColor(nextBackground)
     setTheme((prev) => ({ ...prev, background: nextBackground }))
@@ -249,12 +364,13 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
           height: "100vh",
           overflowY: "auto",
           direction: "rtl",
-          scrollbarWidth: "auto",
+          scrollbarWidth: "none",
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
-          backgroundImage: "url('/background_panel.webp')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundImage: "none",
+          backgroundColor: "rgba(6, 10, 18, 0.34)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
           boxSizing: "border-box",
           zIndex: 999999,
           isolation: "isolate",
@@ -264,27 +380,36 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
           transition: "opacity 0.2s linear, visibility 0.2s linear",
           display: "flex",
           flexDirection: "column",
+          alignItems: "center",
           gap: "20px",
           paddingBottom: PANEL_SCROLL_BOTTOM_SPACE,
           outline: debugUI ? "2px solid red" : "none",
           overscrollBehaviorY: "auto",
           touchAction: "pan-y",
+          scrollbarGutter: "stable",
+          paddingRight: 0,
         }}
       >
         <div
           className="panel-header panel-section"
           style={{
             direction: "ltr",
+            width: CUSTOMIZER_CONTENT_WIDTH,
+            maxWidth: CUSTOMIZER_CONTENT_WIDTH,
+            boxSizing: "border-box",
             position: "sticky",
             top: 0,
             zIndex: 20,
-            backgroundImage: "url('/background_panel.webp')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            backgroundImage: "none",
+            backgroundColor: "transparent",
+            backdropFilter: "none",
+            WebkitBackdropFilter: "none",
+            boxShadow: "none",
+            border: "none",
             display: "flex",
             flexDirection: "column",
             gap: "12px",
-            padding: "16px 20px 12px 20px"
+            padding: "16px 20px 12px 20px",
           }}
         >
           <div
@@ -296,84 +421,92 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
             }}
           >
             <div style={{ display: "flex", gap: "8px" }}>
-              <IconButton
-                defaultSrc="/undo.svg"
-                clickSrc="/undo_click.svg"
-                mode="press"
+              <TintedCtaButton
+                ariaLabel="Undo"
+                defaultSrc={undoButton}
+                pressedSrc={undoButtonPressed}
+                tintColor={controlColor}
                 onClick={handleUndo}
+                width={`${TOGGLE_BUTTON_SIZE}px`}
+                height={`${TOGGLE_BUTTON_SIZE}px`}
               />
 
-              <IconButton
-                defaultSrc="/redo.svg"
-                clickSrc="/redo_click.svg"
-                mode="press"
+              <TintedCtaButton
+                ariaLabel="Redo"
+                defaultSrc={redoButton}
+                pressedSrc={redoButtonPressed}
+                tintColor={controlColor}
                 onClick={handleRedo}
+                width={`${TOGGLE_BUTTON_SIZE}px`}
+                height={`${TOGGLE_BUTTON_SIZE}px`}
               />
             </div>
           </div>
         </div>
 
-        <div className="panel-section panel-frame" style={{ direction: "ltr" }}>
-          <div className="preset-section">
+        <div
+          className="panel-section panel-frame"
+          style={{
+            direction: "ltr",
+            zIndex: 200,
+            width: CUSTOMIZER_NARROW_WIDTH,
+            maxWidth: CUSTOMIZER_NARROW_WIDTH,
+            boxSizing: "border-box",
+            margin: "0 auto",
+            background: "transparent",
+            backgroundImage: "none",
+            boxShadow: "none",
+            border: "none",
+            overflow: "visible",
+            position: "relative",
+          }}
+        >
+          <div
+            className="preset-section"
+            style={{
+              position: "relative",
+              zIndex: 201,
+              overflow: "visible",
+            }}
+          >
             <div
-              className="preset-bar"
-              onClick={() => setIsPresetOpen(!isPresetOpen)}
               style={{
                 position: "relative",
-                width: "100%",
-                height: "64px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                cursor: "pointer"
+                zIndex: 202,
+                width: "min(260px, 100%)",
+                margin: "0 auto",
               }}
             >
-              <img
-                src="/preset_bar.svg"
-                style={{
-                  position: "absolute",
-                  display: "flex",
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  top: 0,
-                  left: 0,
-                  pointerEvents: "none"
-                }}
-              />
-
-              <div
-                className="hud-ui-text"
-                style={{
-                  position: "relative",
-                  fontSize: "18px",
-                  paddingLeft: "20px",
-                  paddingRight: "40px",
-                  zIndex: 2,
-                  flex: 1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}
-              >
-                {selectedPreset || "Aucun preset sélectionné"}
-              </div>
-
-              <img
-                src="/dropdown_chevron.svg"
-                style={{
-                  position: "relative",
-                  width: "20px",
-                  marginRight: "20px",
-                  zIndex: 2,
-                  transform: `${isPresetOpen ? "scaleY(-1)" : "scaleY(1)"} scaleX(-1)`
-                }}
+              <PanelItem
+                label={selectedPreset || "PRESETS"}
+                selected={isPresetOpen}
+                onClick={() => setIsPresetOpen(!isPresetOpen)}
               />
             </div>
 
             {isPresetOpen && (
-              <div className="preset-popin">
-                <div className="preset-popin-content">
+              <div
+                className="preset-popin"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 10px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "min(360px, calc(100vw - 72px))",
+                  maxWidth: "min(360px, calc(100vw - 72px))",
+                  zIndex: 1000005,
+                  overflow: "visible",
+                }}
+              >
+                <div
+                  className="preset-popin-content"
+                  style={{
+                    position: "relative",
+                    zIndex: 1000006,
+                    maxHeight: "260px",
+                    overflowY: "auto",
+                  }}
+                >
                   {presets.map((p) => (
                     <div
                       key={p.name}
@@ -425,11 +558,24 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
           </div>
         </div>
 
-        <div className="panel-section panel-frame" style={{ direction: "ltr" }}>
-          <CharacterPicker />
-        </div>
-
-        <div className="panel-buttons" style={{ direction: "ltr" }}>
+        <div
+          className="panel-buttons"
+          style={{
+            direction: "ltr",
+            position: "relative",
+            zIndex: 1,
+            width: CUSTOMIZER_NARROW_WIDTH,
+            maxWidth: CUSTOMIZER_NARROW_WIDTH,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            background: "transparent",
+            backgroundImage: "none",
+            boxShadow: "none",
+            border: "none",
+          }}
+        >
           <PanelItem
             label="ARRIÈRE PLAN"
             selected={active === "background"}
@@ -455,11 +601,32 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
             selected={active === "color"}
             onClick={() => setActive(active === "color" ? null : "color")}
           />
+
+          <PanelItem
+            label="SAISON"
+            selected={active === "season"}
+            onClick={() => setActive(active === "season" ? null : "season")}
+          />
         </div>
 
         <div
           className={active === "stickers" ? "panel-section-full-width" : "panel-section"}
-          style={{ direction: "ltr" }}
+          style={{
+            direction: "ltr",
+            width: active === "stickers" ? "100%" : CUSTOMIZER_NARROW_WIDTH,
+            maxWidth: active === "stickers" ? "100%" : CUSTOMIZER_NARROW_WIDTH,
+            boxSizing: "border-box",
+            margin: "0 auto",
+            background: "transparent",
+            backgroundImage: "none",
+            boxShadow: "none",
+            border: "none",
+            position: "relative",
+            zIndex: 2,
+            borderRadius: active ? "18px" : undefined,
+            paddingTop: active ? "16px" : undefined,
+            paddingBottom: active ? "20px" : undefined,
+          }}
         >
           {active === "background" && (
             <div style={COLOR_PICKER_SECTION_STYLE}>
@@ -561,11 +728,37 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
             </div>
           )}
 
+          {active === "season" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+              {[
+                { id: WORLD_SEASON_IDS.SPRING, label: "SPRING" },
+                { id: WORLD_SEASON_IDS.SUMMER, label: "SUMMER" },
+                { id: WORLD_SEASON_IDS.AUTUMN, label: "AUTUMN" },
+                { id: WORLD_SEASON_IDS.WINTER, label: "WINTER" },
+              ].map(({ id, label }) => (
+                <PanelActionButton
+                  key={id}
+                  label={label}
+                  tintColor={currentSeason === id ? controlColor : "#555555"}
+                  onClick={() => setWorldTheme(id)}
+                />
+              ))}
+            </div>
+          )}
+
           {active === "stickers" && (
             <div className="panel-section-full-width" style={{ width: "100%", color: "white" }}>
               <div
                 className="panel-section-full-width panel-frame"
-                style={{ padding: "12px 24px", width: "100%", boxSizing: "border-box" }}
+                style={{
+                  padding: "12px 24px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  background: "transparent",
+                  backgroundImage: "none",
+                  boxShadow: "none",
+                  border: "none",
+                }}
               >
                 <div>Sticker 1</div>
                 <PanelActionButton
@@ -612,7 +805,11 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
                   padding: "12px 24px",
                   marginTop: "12px",
                   width: "100%",
-                  boxSizing: "border-box"
+                  boxSizing: "border-box",
+                  background: "transparent",
+                  backgroundImage: "none",
+                  boxShadow: "none",
+                  border: "none",
                 }}
               >
                 <div style={{ marginBottom: "10px" }}>Sticker 2</div>
@@ -657,6 +854,21 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
           )}
         </div>
 
+        <TintedCtaButton
+          ariaLabel="Switch UI"
+          defaultSrc={menuButton}
+          pressedSrc={menuButtonPressed}
+          tintColor={controlColor}
+          onClick={onSwitchMode}
+          width={`${TOGGLE_BUTTON_SIZE}px`}
+          height={`${TOGGLE_BUTTON_SIZE}px`}
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            left: "20px",
+            zIndex: 1000007,
+          }}
+        />
         {debugUI && (
           <div
             style={{
@@ -690,6 +902,60 @@ export default function CustomizerPanel({ open, onRandomizeStars, onToggle, mode
           </div>
         )}
       </div>
+      {open && canScroll && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            top: `${CUSTOM_SCROLLBAR_TOP}px`,
+            right: `${CUSTOM_SCROLLBAR_RIGHT}px`,
+            width: `${CUSTOM_SCROLLBAR_WIDTH}px`,
+            display: "flex",
+            justifyContent: "center",
+            height: scrollbarTrackHeight,
+            zIndex: 1000000,
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            onPointerDown={handleScrollbarPointerDown}
+            onPointerMove={handleScrollbarPointerMove}
+            onPointerUp={handleScrollbarPointerUp}
+            onPointerCancel={handleScrollbarPointerUp}
+            onMouseEnter={() => setScrollbarHover(true)}
+            onMouseLeave={() => setScrollbarHover(false)}
+            style={{
+              position: "absolute",
+              top: `${scrollbarThumbTop - CUSTOM_SCROLLBAR_TOP}px`,
+              right: 0,
+              width: `${CUSTOM_SCROLLBAR_WIDTH}px`,
+              height: `${scrollbarThumbHeight}px`,
+              pointerEvents: "auto",
+              cursor: "grab",
+              touchAction: "none",
+              userSelect: "none",
+              backgroundColor: "transparent",
+              overflow: "hidden",
+              borderRadius: 0,
+              imageRendering: "pixelated",
+            }}
+          >
+            <TintedCtaButton
+              ariaLabel="Scrollbar"
+              defaultSrc={scrollbarHover ? scrollbarThumbHover : scrollbarThumb}
+              pressedSrc={scrollbarThumbHover}
+              tintColor={controlColor}
+              width="100%"
+              height="100%"
+              style={{
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }

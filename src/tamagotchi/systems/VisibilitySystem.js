@@ -34,8 +34,17 @@ export default function VisibilitySystem() {
 
   useEffect(() => {
     let raf;
+    let last = 0;
+    const FPS = 30;
+    const interval = 1000 / FPS;
 
-    const loop = () => {
+    const loop = (t = 0) => {
+      if (t - last < interval) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+      last = t;
+
       const viewport = {
         width: window.innerWidth,
         height: window.innerHeight,
@@ -43,9 +52,26 @@ export default function VisibilitySystem() {
 
       const worldOffset = useWorldStore.getState().worldOffset;
 
-      setState((state) => ({
-        entities: updateVisibility(state, viewport, worldOffset),
-      }));
+      setState((state) => {
+        const nextEntities = updateVisibility(state, viewport, worldOffset);
+
+        // Check if any 'active' flag changed to avoid unnecessary updates
+        const prev = state.entities || [];
+        let changed = prev.length !== nextEntities.length;
+
+        if (!changed) {
+          for (let i = 0; i < nextEntities.length; i++) {
+            if (prev[i]?.active !== nextEntities[i]?.active) {
+              changed = true;
+              break;
+            }
+          }
+        }
+
+        if (!changed) return state; // no-op, prevents rerender loop
+
+        return { entities: nextEntities };
+      });
 
       raf = requestAnimationFrame(loop);
     };

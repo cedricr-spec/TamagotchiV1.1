@@ -1,7 +1,11 @@
 // Compatibility adapter for legacy world/menu item sprite usage.
 // New inventory items live in itemsRegistry.js + itemSprites.js.
 
-import { ITEMS_REGISTRY as INVENTORY_ITEMS } from "./itemsRegistry"
+import {
+  ITEMS_REGISTRY as INVENTORY_ITEMS,
+  getCanonicalItemId,
+  getItemDefinition as getInventoryItemDefinition,
+} from "./itemsRegistry"
 import { getItemSpriteAsset } from "./itemSprites"
 
 const DEFAULT_ITEM_TYPE = "food"
@@ -47,6 +51,11 @@ function resolveLegacySprite(category, spriteKey) {
 }
 
 export function getItemDefinition(itemKey) {
+  const canonicalItemId = getCanonicalItemId(itemKey)
+  if (canonicalItemId) {
+    return getInventoryItemDefinition(canonicalItemId)
+  }
+
   return ITEM_REGISTRY[itemKey] || null
 }
 
